@@ -20,7 +20,8 @@ from data_loader import (
 batch_size = 64  # Batch size for training.3774
 epochs = 100  # Number of epochs to train for.
 latent_dim = 256  # Latent dimensionality of the encoding space.
-direction = 'ch2en'  # ch2en or en2ch
+direction = 'en2ch'  # ch2en or en2ch
+model_output = 'en2ch_lstm.h5'
 
 train_input_texts, train_target_texts = load_translation_pairs(
     default_dataset_path(direction, 'train'))
