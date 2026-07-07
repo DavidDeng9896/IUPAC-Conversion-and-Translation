@@ -67,9 +67,13 @@ def vectorize_batch(
     target_token_index: dict[str, int],
     num_encoder_tokens: int,
     num_decoder_tokens: int,
+    max_encoder_seq_length: int | None = None,
+    max_decoder_seq_length: int | None = None,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    max_encoder_seq_length = max(len(text) for text in input_texts)
-    max_decoder_seq_length = max(len(text) for text in target_texts)
+    if max_encoder_seq_length is None:
+        max_encoder_seq_length = max(len(text) for text in input_texts)
+    if max_decoder_seq_length is None:
+        max_decoder_seq_length = max(len(text) for text in target_texts)
     batch_size = len(input_texts)
 
     encoder_input_data = np.zeros(
@@ -150,6 +154,8 @@ class TranslationBatchGenerator(Sequence):
         num_encoder_tokens: int,
         num_decoder_tokens: int,
         batch_size: int,
+        max_encoder_seq_length: int,
+        max_decoder_seq_length: int,
         shuffle: bool = True,
         seed: int = 42,
     ) -> None:
@@ -164,6 +170,8 @@ class TranslationBatchGenerator(Sequence):
         self.num_encoder_tokens = num_encoder_tokens
         self.num_decoder_tokens = num_decoder_tokens
         self.batch_size = batch_size
+        self.max_encoder_seq_length = max_encoder_seq_length
+        self.max_decoder_seq_length = max_decoder_seq_length
         self.shuffle = shuffle
         self.seed = seed
         self.indices = np.arange(len(input_texts))
@@ -190,5 +198,7 @@ class TranslationBatchGenerator(Sequence):
             self.target_token_index,
             self.num_encoder_tokens,
             self.num_decoder_tokens,
+            self.max_encoder_seq_length,
+            self.max_decoder_seq_length,
         )
         return (encoder_input_data, decoder_input_data), decoder_target_data

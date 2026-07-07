@@ -56,6 +56,8 @@ train_generator = TranslationBatchGenerator(
     num_encoder_tokens,
     num_decoder_tokens,
     batch_size,
+    max_encoder_seq_length,
+    max_decoder_seq_length,
     shuffle=True,
 )
 val_generator = TranslationBatchGenerator(
@@ -66,6 +68,8 @@ val_generator = TranslationBatchGenerator(
     num_encoder_tokens,
     num_decoder_tokens,
     batch_size,
+    max_encoder_seq_length,
+    max_decoder_seq_length,
     shuffle=False,
 )
 # Define an input sequence and process it.
