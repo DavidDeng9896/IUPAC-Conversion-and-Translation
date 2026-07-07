@@ -1,0 +1,3 @@
+# Local training data (large files; download separately)
+data/*.csv
+data/*.xlsx
