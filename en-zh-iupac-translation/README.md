@@ -14,15 +14,24 @@
 
 ```
 en-zh-iupac-translation/
+├── scripts/
+│   └── prepare_training_data.py  # 整理原始 CSV 为训练/验证集
 ├── src/
-│   ├── cnn_model.py      # 基于 CNN 的字符级 seq2seq 模型（原 Additional file 2）
-│   └── lstm_model.py     # 基于 LSTM 的字符级 seq2seq 模型（原 Additional file 3）
+│   ├── data_loader.py            # 从本地 CSV 加载训练数据
+│   ├── cnn_model.py              # 基于 CNN 的字符级 seq2seq 模型（原 Additional file 2）
+│   └── lstm_model.py             # 基于 LSTM 的字符级 seq2seq 模型（原 Additional file 3）
 └── data/
-    ├── training_dataset.csv     # 完整训练集（CSV，约 100 万行，不纳入 Git）
-    ├── training_dataset.xlsx    # 训练/验证数据集（原 Additional file 1）
+    ├── training_dataset.csv      # 原始完整训练集（不纳入 Git）
+    ├── processed/                # 整理后的训练/验证 CSV（不纳入 Git）
+    │   ├── ch2en_train.csv
+    │   ├── ch2en_val.csv
+    │   ├── en2ch_train.csv
+    │   ├── en2ch_val.csv
+    │   └── dataset_stats.json
+    ├── training_dataset.xlsx     # 论文补充材料子集
     ├── validation_results.xlsx
-    ├── en2ch_evaluation.xlsx    # 英→中评估结果
-    └── ch2en_evaluation.xlsx    # 中→英评估结果
+    ├── en2ch_evaluation.xlsx     # 英→中评估结果
+    └── ch2en_evaluation.xlsx     # 中→英评估结果
 ```
 
 ## 模型说明
@@ -38,15 +47,35 @@ en-zh-iupac-translation/
 
 - Python 3.7+
 - Keras 2.3 / TensorFlow
-- pymssql（原始脚本从 SQL Server 读取训练数据）
 - numpy, matplotlib
 
-## 使用注意
+## 训练数据整理
 
-原始补充材料中的训练脚本通过 `pymssql` 连接 SQL Server 数据库读取 `TrainDataSet`。本地复现时，建议：
+原始 `data/training_dataset.csv` 需先整理为训练/验证集：
 
-1. 使用 `data/training_dataset.csv`（完整训练集）或 `data/training_dataset.xlsx`（论文补充材料）
-2. 修改 `src/cnn_model.py` 和 `src/lstm_model.py` 中的数据加载部分，改为从本地文件读取
+```bash
+python scripts/prepare_training_data.py
+```
+
+脚本会生成 `data/processed/` 下的 CSV 文件，列名为 `SourceName`、`TargetName`（与原始 SQL 表字段一致）：
+
+| 文件 | 说明 |
+|------|------|
+| `ch2en_train.csv` / `ch2en_val.csv` | 中→英，训练集 / 验证集（8:2 划分） |
+| `en2ch_train.csv` / `en2ch_val.csv` | 英→中（由中→英反向生成） |
+
+整理规则：去除空值与重复项，保留「源含中文、目标为英文」的有效样本。
+
+## 模型训练
+
+在 `src/cnn_model.py` 或 `src/lstm_model.py` 中设置 `direction = 'ch2en'` 或 `'en2ch'`，然后：
+
+```bash
+cd en-zh-iupac-translation/src
+python cnn_model.py
+```
+
+训练脚本从 `data/processed/` 读取对应方向的 CSV，不再依赖 SQL Server。
 
 在线规则翻译工具（论文对比基线）: [SIOC 化学命名翻译](https://www.organchem.csdb.cn/translate)
 

@@ -1,2 +1,4 @@
 # Large training dataset (download separately)
 en-zh-iupac-translation/data/training_dataset.csv
+en-zh-iupac-translation/data/processed/*.csv
+__pycache__/
