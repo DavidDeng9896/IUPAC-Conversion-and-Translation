@@ -153,6 +153,7 @@ class TranslationBatchGenerator(Sequence):
         shuffle: bool = True,
         seed: int = 42,
     ) -> None:
+        super().__init__()
         if len(input_texts) != len(target_texts):
             raise ValueError("input_texts and target_texts must have the same length")
 
@@ -190,4 +191,4 @@ class TranslationBatchGenerator(Sequence):
             self.num_encoder_tokens,
             self.num_decoder_tokens,
         )
-        return [encoder_input_data, decoder_input_data], decoder_target_data
+        return (encoder_input_data, decoder_input_data), decoder_target_data
