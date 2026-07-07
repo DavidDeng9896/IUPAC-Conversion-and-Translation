@@ -18,6 +18,7 @@ en-zh-iupac-translation/
 │   ├── cnn_model.py      # 基于 CNN 的字符级 seq2seq 模型（原 Additional file 2）
 │   └── lstm_model.py     # 基于 LSTM 的字符级 seq2seq 模型（原 Additional file 3）
 └── data/
+    ├── training_dataset.csv     # 完整训练集（CSV，约 100 万行，不纳入 Git）
     ├── training_dataset.xlsx    # 训练/验证数据集（原 Additional file 1）
     ├── validation_results.xlsx
     ├── en2ch_evaluation.xlsx    # 英→中评估结果
@@ -44,7 +45,7 @@ en-zh-iupac-translation/
 
 原始补充材料中的训练脚本通过 `pymssql` 连接 SQL Server 数据库读取 `TrainDataSet`。本地复现时，建议：
 
-1. 将 `data/training_dataset.xlsx` 导出为 CSV/JSON
+1. 使用 `data/training_dataset.csv`（完整训练集）或 `data/training_dataset.xlsx`（论文补充材料）
 2. 修改 `src/cnn_model.py` 和 `src/lstm_model.py` 中的数据加载部分，改为从本地文件读取
 
 在线规则翻译工具（论文对比基线）: [SIOC 化学命名翻译](https://www.organchem.csdb.cn/translate)

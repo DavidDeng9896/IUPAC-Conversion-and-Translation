@@ -31,7 +31,7 @@ print(translate_forward(smiles))  # 1,3,7-trimethylpurine-2,6-dione
 
 ### 英中 IUPAC 翻译
 
-训练数据与 CNN/LSTM 模型代码见 [`en-zh-iupac-translation/`](en-zh-iupac-translation/)。原始脚本依赖 Keras 2.3 与 SQL Server 读取训练集，使用前需将 `data/training_dataset.xlsx` 导入数据库或改写数据加载逻辑。
+训练数据与 CNN/LSTM 模型代码见 [`en-zh-iupac-translation/`](en-zh-iupac-translation/)。完整训练集位于 `en-zh-iupac-translation/data/training_dataset.csv`；原始脚本依赖 Keras 2.3 与 SQL Server 读取训练集，使用前需改写数据加载逻辑以从本地 CSV 读取。
 
 ## 许可证
 

@@ -1,3 +1,2 @@
-# Local training data (large files; download separately)
-data/*.csv
-data/*.xlsx
+# Large training dataset (download separately)
+en-zh-iupac-translation/data/training_dataset.csv
