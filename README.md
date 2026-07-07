@@ -6,17 +6,12 @@
 |------|------|----------|
 | [`en-zh-iupac-translation/`](en-zh-iupac-translation/) | 英文 IUPAC 化合物名称 → 中文名称 | Xu et al., *J. Cheminform.* 2020 |
 | [`stout-2.0/`](stout-2.0/) | SMILES → IUPAC 名称（双向） | Rajan et al., *J. Cheminform.* 2024 |
-| [`diffiupac/`](diffiupac/) | IUPAC 名称 → SMILES（扩散生成模型） | Wang et al., *J. Pharm. Anal.* 2024 |
 
 ## 典型工作流
 
 ```
 SMILES  ──(STOUT 2.0)──►  英文 IUPAC  ──(EN-ZH NMT)──►  中文化合物名称
 ```
-
-## 关于用户提供的 ScienceDirect 链接
-
-链接 [S209517792400234X](https://www.sciencedirect.com/science/article/pii/S209517792400234X) 对应的是 **DiffIUPAC** 论文（IUPAC → SMILES 分子编辑），并非英中翻译。英中 IUPAC 名称翻译的代码来自 Xu 等人 2020 年发表于 *Journal of Cheminformatics* 的补充材料，已整理在 `en-zh-iupac-translation/` 目录。
 
 ## 快速开始
 
