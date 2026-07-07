@@ -8,46 +8,102 @@
 - **作者**: Tingjun Xu, Weiming Chen, Junhong Zhou, Jingfang Dai, Yingyong Li, Yingli Zhao
 - **期刊**: *Journal of Cheminformatics*, 12, 50 (2020)
 - **DOI**: [10.1186/s13321-020-00457-0](https://doi.org/10.1186/s13321-020-00457-0)
-- **PMC**: [PMC7460765](https://pmc.ncbi.nlm.nih.gov/articles/PMC7460765/)
 
 ## 目录结构
 
 ```
 en-zh-iupac-translation/
-├── src/
-│   ├── cnn_model.py      # 基于 CNN 的字符级 seq2seq 模型（原 Additional file 2）
-│   └── lstm_model.py     # 基于 LSTM 的字符级 seq2seq 模型（原 Additional file 3）
-└── data/
-    ├── training_dataset.xlsx    # 训练/验证数据集（原 Additional file 1）
-    ├── validation_results.xlsx
-    ├── en2ch_evaluation.xlsx    # 英→中评估结果
-    └── ch2en_evaluation.xlsx    # 中→英评估结果
+├── requirements.txt
+├── data/
+│   ├── training_dataset.xlsx    # 训练数据（En2Ch / Ch2En 两个 sheet）
+│   └── ...
+└── src/
+    ├── data_loader.py           # 从 xlsx 加载数据
+    ├── train_lstm.py            # 训练 LSTM 模型（推荐，支持推理）
+    ├── train_cnn.py             # 训练 CNN 模型
+    ├── translate_lstm.py        # 使用训练好的 LSTM 模型翻译
+    ├── cnn_model.py             # 论文原始 CNN 脚本（依赖 SQL Server）
+    └── lstm_model.py            # 论文原始 LSTM 脚本（依赖 SQL Server）
 ```
 
-## 模型说明
+## 环境准备
 
-- **CNN 模型** (`src/cnn_model.py`): 三层一维卷积编码器-解码器 + 注意力机制
-- **LSTM 模型** (`src/lstm_model.py`): LSTM 编码器-解码器 + teacher forcing
+```bash
+cd en-zh-iupac-translation
+pip install -r requirements.txt
+```
 
-数据集规模：
-- En2Ch（英→中）: 30,394 条
-- Ch2En（中→英）: 37,207 条
+依赖：Python 3.9+、TensorFlow 2.x、pandas、openpyxl。
 
-## 依赖
+> 论文补充材料**未提供预训练权重**，需要先训练模型再翻译。
 
-- Python 3.7+
-- Keras 2.3 / TensorFlow
-- pymssql（原始脚本从 SQL Server 读取训练数据）
-- numpy, matplotlib
+## 快速验证（小样本试跑）
 
-## 使用注意
+```bash
+cd src
+python train_lstm.py --direction en2ch --epochs 1 --max-samples 500 --output ../models/lstm_en2ch_demo
+python translate_lstm.py --model-dir ../models/lstm_en2ch_demo --text "benzene"
+```
 
-原始补充材料中的训练脚本通过 `pymssql` 连接 SQL Server 数据库读取 `TrainDataSet`。本地复现时，建议：
+## 正式训练
 
-1. 将 `data/training_dataset.xlsx` 导出为 CSV/JSON
-2. 修改 `src/cnn_model.py` 和 `src/lstm_model.py` 中的数据加载部分，改为从本地文件读取
+### LSTM（英→中，论文中该方向效果更好）
 
-在线规则翻译工具（论文对比基线）: [SIOC 化学命名翻译](https://www.organchem.csdb.cn/translate)
+```bash
+cd src
+python train_lstm.py \
+  --direction en2ch \
+  --epochs 100 \
+  --batch-size 64 \
+  --output ../models/lstm_en2ch
+```
+
+### LSTM（中→英）
+
+```bash
+python train_lstm.py \
+  --direction ch2en \
+  --epochs 100 \
+  --output ../models/lstm_ch2en
+```
+
+### CNN（仅训练，暂不提供 CLI 推理）
+
+```bash
+python train_cnn.py --direction en2ch --epochs 100 --output ../models/cnn_en2ch
+```
+
+训练完成后，模型目录包含：
+
+- `model.keras` — 模型权重
+- `metadata.json` — 字符表、序列长度等推理所需元数据
+
+## 翻译推理
+
+```bash
+cd src
+
+# 单条翻译
+python translate_lstm.py --model-dir ../models/lstm_en2ch --text "1,3,7-trimethylpurine-2,6-dione"
+
+# 批量翻译
+python translate_lstm.py --model-dir ../models/lstm_en2ch --input-file names.txt
+```
+
+## 数据说明
+
+`data/training_dataset.xlsx` 含两个 sheet：
+
+| Sheet | 方向 | 样本数 |
+|-------|------|--------|
+| `Data_EN2CH` | 英文 → 中文 | ~31,000 |
+| `Data_CH2EN` | 中文 → 英文 | ~37,800 |
+
+## 原始脚本说明
+
+`cnn_model.py` 和 `lstm_model.py` 是论文作者发布的原始训练脚本，通过 `pymssql` 连接 SQL Server 读取数据，**无法直接在本仓库运行**。请使用上面的 `train_lstm.py` / `train_cnn.py`，它们会从本地 `data/training_dataset.xlsx` 读取数据。
+
+在线规则翻译基线：[SIOC 化学命名翻译](https://www.organchem.csdb.cn/translate)
 
 ## 引用
 
