@@ -6,6 +6,7 @@ import csv
 from pathlib import Path
 
 import numpy as np
+from keras.utils import Sequence
 
 DEFAULT_DATA_DIR = Path(__file__).resolve().parents[1] / "data" / "processed"
 
@@ -59,6 +60,46 @@ def build_token_indices(
     )
 
 
+def vectorize_batch(
+    input_texts: list[str],
+    target_texts: list[str],
+    input_token_index: dict[str, int],
+    target_token_index: dict[str, int],
+    num_encoder_tokens: int,
+    num_decoder_tokens: int,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    max_encoder_seq_length = max(len(text) for text in input_texts)
+    max_decoder_seq_length = max(len(text) for text in target_texts)
+    batch_size = len(input_texts)
+
+    encoder_input_data = np.zeros(
+        (batch_size, max_encoder_seq_length, num_encoder_tokens),
+        dtype="float32",
+    )
+    decoder_input_data = np.zeros(
+        (batch_size, max_decoder_seq_length, num_decoder_tokens),
+        dtype="float32",
+    )
+    decoder_target_data = np.zeros(
+        (batch_size, max_decoder_seq_length, num_decoder_tokens),
+        dtype="float32",
+    )
+
+    for index, (input_text, target_text) in enumerate(zip(input_texts, target_texts)):
+        for timestep, char in enumerate(input_text):
+            encoder_input_data[index, timestep, input_token_index[char]] = 1.0
+        encoder_input_data[index, timestep + 1 :, input_token_index[" "]] = 1.0
+
+        for timestep, char in enumerate(target_text):
+            decoder_input_data[index, timestep, target_token_index[char]] = 1.0
+            if timestep > 0:
+                decoder_target_data[index, timestep - 1, target_token_index[char]] = 1.0
+        decoder_input_data[index, timestep + 1 :, target_token_index[" "]] = 1.0
+        decoder_target_data[index, timestep:, target_token_index[" "]] = 1.0
+
+    return encoder_input_data, decoder_input_data, decoder_target_data
+
+
 def vectorize_texts(
     input_texts: list[str],
     target_texts: list[str],
@@ -95,3 +136,58 @@ def vectorize_texts(
         decoder_target_data[index, timestep:, target_token_index[" "]] = 1.0
 
     return encoder_input_data, decoder_input_data, decoder_target_data
+
+
+class TranslationBatchGenerator(Sequence):
+    """Yield one-hot batches with per-batch dynamic padding."""
+
+    def __init__(
+        self,
+        input_texts: list[str],
+        target_texts: list[str],
+        input_token_index: dict[str, int],
+        target_token_index: dict[str, int],
+        num_encoder_tokens: int,
+        num_decoder_tokens: int,
+        batch_size: int,
+        shuffle: bool = True,
+        seed: int = 42,
+    ) -> None:
+        if len(input_texts) != len(target_texts):
+            raise ValueError("input_texts and target_texts must have the same length")
+
+        self.input_texts = input_texts
+        self.target_texts = target_texts
+        self.input_token_index = input_token_index
+        self.target_token_index = target_token_index
+        self.num_encoder_tokens = num_encoder_tokens
+        self.num_decoder_tokens = num_decoder_tokens
+        self.batch_size = batch_size
+        self.shuffle = shuffle
+        self.seed = seed
+        self.indices = np.arange(len(input_texts))
+        self.rng = np.random.default_rng(seed)
+        self.on_epoch_end()
+
+    def __len__(self) -> int:
+        return int(np.ceil(len(self.input_texts) / self.batch_size))
+
+    def on_epoch_end(self) -> None:
+        if self.shuffle:
+            self.rng.shuffle(self.indices)
+
+    def __getitem__(self, index: int) -> tuple[list[np.ndarray], np.ndarray]:
+        start = index * self.batch_size
+        end = start + self.batch_size
+        batch_indices = self.indices[start:end]
+        batch_input_texts = [self.input_texts[i] for i in batch_indices]
+        batch_target_texts = [self.target_texts[i] for i in batch_indices]
+        encoder_input_data, decoder_input_data, decoder_target_data = vectorize_batch(
+            batch_input_texts,
+            batch_target_texts,
+            self.input_token_index,
+            self.target_token_index,
+            self.num_encoder_tokens,
+            self.num_decoder_tokens,
+        )
+        return [encoder_input_data, decoder_input_data], decoder_target_data

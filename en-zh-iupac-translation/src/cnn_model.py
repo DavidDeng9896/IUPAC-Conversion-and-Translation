@@ -10,10 +10,10 @@ from keras.layers import Input, Convolution1D, Dot, Dense, Activation, Concatena
 import matplotlib.pyplot as plt
 
 from data_loader import (
+    TranslationBatchGenerator,
     build_token_indices,
     default_dataset_path,
     load_translation_pairs,
-    vectorize_texts,
 )
 
 batch_size = 64  # Batch size for training.
@@ -48,25 +48,25 @@ print('Number of unique output tokens:', num_decoder_tokens)
 print('Max sequence length for inputs:', max_encoder_seq_length)
 print('Max sequence length for outputs:', max_decoder_seq_length)
 
-encoder_input_data, decoder_input_data, decoder_target_data = vectorize_texts(
+train_generator = TranslationBatchGenerator(
     train_input_texts,
     train_target_texts,
     input_token_index,
     target_token_index,
     num_encoder_tokens,
     num_decoder_tokens,
-    max_encoder_seq_length,
-    max_decoder_seq_length,
+    batch_size,
+    shuffle=True,
 )
-val_encoder_input_data, val_decoder_input_data, val_decoder_target_data = vectorize_texts(
+val_generator = TranslationBatchGenerator(
     val_input_texts,
     val_target_texts,
     input_token_index,
     target_token_index,
     num_encoder_tokens,
     num_decoder_tokens,
-    max_encoder_seq_length,
-    max_decoder_seq_length,
+    batch_size,
+    shuffle=False,
 )
 # Define an input sequence and process it.
 encoder_inputs = Input(shape=(None, num_encoder_tokens))
@@ -109,11 +109,11 @@ model.summary()
 # Run training
 model.compile(optimizer='adam', loss='categorical_crossentropy',
               metrics=['accuracy'])
-history = model.fit([encoder_input_data, decoder_input_data], decoder_target_data,
-          batch_size=batch_size,
-          epochs=epochs,
-          validation_data=([val_encoder_input_data, val_decoder_input_data],
-                           val_decoder_target_data),
-          verbose=2)
+history = model.fit(
+    train_generator,
+    epochs=epochs,
+    validation_data=val_generator,
+    verbose=2,
+)
 # Save model
 model.save('model name' + '.h5')

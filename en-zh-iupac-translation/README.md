@@ -75,7 +75,13 @@ cd en-zh-iupac-translation/src
 python cnn_model.py
 ```
 
-训练脚本从 `data/processed/` 读取对应方向的 CSV，不再依赖 SQL Server。
+训练脚本从 `data/processed/` 读取对应方向的 CSV，按 batch 动态 padding，无需一次性将全部样本载入内存，也不再依赖 SQL Server。
+
+### 依赖安装
+
+```bash
+pip install -r requirements.txt
+```
 
 在线规则翻译工具（论文对比基线）: [SIOC 化学命名翻译](https://www.organchem.csdb.cn/translate)
 
