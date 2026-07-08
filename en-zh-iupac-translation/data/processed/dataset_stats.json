@@ -1,0 +1,22 @@
+{
+  "input": "/workspace/en-zh-iupac-translation/data/training_dataset.csv",
+  "output_dir": "/workspace/en-zh-iupac-translation/data/processed",
+  "val_ratio": 0.2,
+  "seed": 42,
+  "datasets": [
+    {
+      "direction": "ch2en",
+      "raw_rows": 1028583,
+      "cleaned_unique_rows": 1024841,
+      "train_rows": 819873,
+      "val_rows": 204968
+    },
+    {
+      "direction": "en2ch",
+      "raw_rows": 1028583,
+      "cleaned_unique_rows": 1024841,
+      "train_rows": 819873,
+      "val_rows": 204968
+    }
+  ]
+}
