@@ -17,7 +17,7 @@ from data_loader import (
     load_translation_pairs,
 )
 
-batch_size = 64  # Batch size for training.3774
+batch_size = 32  # Tuned for 15GB RAM with full en2ch dataset.
 epochs = 100  # Number of epochs to train for.
 latent_dim = 256  # Latent dimensionality of the encoding space.
 direction = 'en2ch'  # ch2en or en2ch
