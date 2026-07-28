@@ -18,6 +18,8 @@
       --blue-selected-bg: #f5f7ff;
       --blue-icon: #4b78f0;
       --chip: #e2e3e5;
+      --edge-parent: #C4D1C2;
+      --edge-assoc: #CED2D9;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -43,6 +45,138 @@
       touch-action: none;
     }
 
+    /* —— 左上角筛选条 —— */
+    .filter-bar {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      z-index: 40;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 40px;
+      padding: 6px 10px;
+      background: #fff;
+      border: 1px solid #e6e6e8;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(16, 16, 20, 0.08);
+      font-size: 13px;
+      color: #2a2a2e;
+      user-select: none;
+    }
+
+    .filter-dropdown {
+      position: relative;
+    }
+
+    .filter-trigger {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      height: 28px;
+      padding: 0 8px;
+      border: none;
+      background: transparent;
+      font: inherit;
+      color: inherit;
+      cursor: pointer;
+      border-radius: 4px;
+      white-space: nowrap;
+    }
+
+    .filter-trigger:hover { background: #f3f4f6; }
+
+    .filter-trigger svg {
+      width: 12px;
+      height: 12px;
+      color: #6b6b6f;
+      flex-shrink: 0;
+    }
+
+    .filter-menu {
+      display: none;
+      position: absolute;
+      top: calc(100% + 6px);
+      left: 0;
+      min-width: 132px;
+      padding: 4px;
+      background: #fff;
+      border: 1px solid #e6e6e8;
+      border-radius: 8px;
+      box-shadow: 0 6px 18px rgba(16, 16, 20, 0.12);
+      z-index: 50;
+    }
+
+    .filter-menu.open { display: block; }
+
+    .filter-option {
+      display: block;
+      width: 100%;
+      text-align: left;
+      padding: 8px 10px;
+      border: none;
+      background: transparent;
+      font: inherit;
+      color: #2a2a2e;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    .filter-option:hover { background: #f3f4f6; }
+    .filter-option.active {
+      color: #3b5bdb;
+      background: #eef2ff;
+      font-weight: 600;
+    }
+
+    .filter-divider {
+      width: 1px;
+      height: 20px;
+      background: #e6e6e8;
+      flex-shrink: 0;
+    }
+
+    .filter-tags {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .filter-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      height: 26px;
+      padding: 0 6px 0 10px;
+      background: #f1f3f5;
+      border-radius: 4px;
+      font-size: 12px;
+      color: #3c3c40;
+      white-space: nowrap;
+    }
+
+    .filter-tag button {
+      width: 16px;
+      height: 16px;
+      border: none;
+      background: transparent;
+      color: #8a8a8e;
+      cursor: pointer;
+      border-radius: 3px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      line-height: 1;
+      padding: 0;
+    }
+
+    .filter-tag button:hover {
+      background: #e2e4e8;
+      color: #2a2a2e;
+    }
+
     .edges {
       position: absolute;
       inset: 0;
@@ -55,17 +189,15 @@
 
     .edges path {
       fill: none;
-      stroke-width: 1.5;
+      stroke-width: 1.6;
+      stroke-linecap: round;
     }
 
-    .edges path.parent {
-      stroke: #C4D1C2;
-    }
-
+    .edges path.parent { stroke: var(--edge-parent); }
     .edges path.assoc {
-      stroke: #CED2D9;
+      stroke: var(--edge-assoc);
       stroke-dasharray: 5 4;
-      stroke-width: 1.4;
+      stroke-width: 1.5;
     }
 
     .node {
@@ -85,6 +217,8 @@
       min-width: 168px;
       touch-action: none;
     }
+
+    .node.hidden { display: none; }
 
     .node:active,
     .node.dragging {
@@ -190,6 +324,34 @@
 </head>
 <body>
   <div class="map" id="map">
+    <div class="filter-bar" id="filter-bar">
+      <div class="filter-dropdown" id="relation-dropdown">
+        <button class="filter-trigger" type="button" id="relation-trigger">
+          <span id="relation-label">全部关系</span>
+          <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4.5L6 7.5L9 4.5"/></svg>
+        </button>
+        <div class="filter-menu" id="relation-menu">
+          <button class="filter-option active" type="button" data-value="all">全部关系</button>
+          <button class="filter-option" type="button" data-value="parent">父子关系</button>
+          <button class="filter-option" type="button" data-value="assoc">关联关系</button>
+        </div>
+      </div>
+
+      <div class="filter-divider"></div>
+
+      <div class="filter-tags" id="round-tags"></div>
+
+      <div class="filter-dropdown" id="round-dropdown">
+        <button class="filter-trigger" type="button" id="round-trigger" aria-label="轮次筛选">
+          <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4.5L6 7.5L9 4.5"/></svg>
+        </button>
+        <div class="filter-menu" id="round-menu">
+          <button class="filter-option" type="button" data-round="第一轮">第一轮</button>
+          <button class="filter-option" type="button" data-round="第二轮">第二轮</button>
+        </div>
+      </div>
+    </div>
+
     <svg class="edges" id="edges" xmlns="http://www.w3.org/2000/svg"></svg>
 
     <div class="zoom-bar">
@@ -230,32 +392,42 @@
       </svg>`;
 
     const nodes = [
-      { id: "root", label: "PDL1-WT01", sub: "", xPct: 6, yPct: 48, selected: true },
-      { id: "r1a", label: "CAND-PDL1-001", sub: "轮次/阶段：第一轮", xPct: 38, yPct: 18 },
-      { id: "r1b", label: "CAND-PDL1-002", sub: "轮次/阶段：第一轮", xPct: 38, yPct: 42 },
-      { id: "r1c", label: "CAND-PDL1-003", sub: "轮次/阶段：第一轮", xPct: 38, yPct: 66 },
-      { id: "r2a", label: "CAND-PDL1-004", sub: "轮次/阶段：第二轮", xPct: 72, yPct: 18 },
-      { id: "r2b", label: "CAND-PDL1-005", sub: "轮次/阶段：第二轮", xPct: 72, yPct: 42 },
-      { id: "r2c", label: "CAND-PDL1-006", sub: "轮次/阶段：第二轮", xPct: 72, yPct: 66 },
+      { id: "root", label: "PDL1-WT01", sub: "", round: null, xPct: 6, yPct: 48, selected: true },
+      { id: "r1a", label: "CAND-PDL1-001", sub: "轮次/阶段：第一轮", round: "第一轮", xPct: 38, yPct: 18 },
+      { id: "r1b", label: "CAND-PDL1-002", sub: "轮次/阶段：第一轮", round: "第一轮", xPct: 38, yPct: 42 },
+      { id: "r1c", label: "CAND-PDL1-003", sub: "轮次/阶段：第一轮", round: "第一轮", xPct: 38, yPct: 66 },
+      { id: "r2a", label: "CAND-PDL1-004", sub: "轮次/阶段：第二轮", round: "第二轮", xPct: 72, yPct: 18 },
+      { id: "r2b", label: "CAND-PDL1-005", sub: "轮次/阶段：第二轮", round: "第二轮", xPct: 72, yPct: 42 },
+      { id: "r2c", label: "CAND-PDL1-006", sub: "轮次/阶段：第二轮", round: "第二轮", xPct: 72, yPct: 66 },
     ];
 
     const edges = [
-      // 父级关系：PDL1-WT01 → 其余全部
       { from: "root", to: "r1a", type: "parent" },
       { from: "root", to: "r1b", type: "parent" },
       { from: "root", to: "r1c", type: "parent" },
       { from: "root", to: "r2a", type: "parent" },
       { from: "root", to: "r2b", type: "parent" },
       { from: "root", to: "r2c", type: "parent" },
-      // 关联关系：虚线
-      { from: "r1a", to: "r2a", type: "assoc" }, // 001 → 004
-      { from: "r1a", to: "r2b", type: "assoc" }, // 001 → 005
-      { from: "r1b", to: "r2c", type: "assoc" }, // 002 → 006
+      { from: "r1a", to: "r2a", type: "assoc" },
+      { from: "r1a", to: "r2b", type: "assoc" },
+      { from: "r1b", to: "r2c", type: "assoc" },
     ];
+
+    const RELATION_LABELS = {
+      all: "全部关系",
+      parent: "父子关系",
+      assoc: "关联关系",
+    };
+
+    const filters = {
+      relation: "all",
+      rounds: new Set(["第一轮", "第二轮"]),
+    };
 
     const map = document.getElementById("map");
     const svg = document.getElementById("edges");
     const nodeEls = {};
+    const ARROW_GAP = 10;
 
     function renderNodes() {
       nodes.forEach((n) => {
@@ -275,6 +447,21 @@
       });
     }
 
+    function isNodeVisible(n) {
+      if (!n.round) return true; // root 始终可见（只要有任一子节点可见时由边逻辑处理；这里保持可见）
+      return filters.rounds.has(n.round);
+    }
+
+    function applyFilters() {
+      nodes.forEach((n) => {
+        const el = nodeEls[n.id];
+        if (!el) return;
+        el.classList.toggle("hidden", !isNodeVisible(n));
+      });
+      drawEdges();
+      renderRoundTags();
+    }
+
     function port(el, side) {
       const mr = map.getBoundingClientRect();
       const r = el.getBoundingClientRect();
@@ -289,6 +476,17 @@
       return `M ${a.x} ${a.y} C ${a.x + dx} ${a.y}, ${b.x - dx} ${b.y}, ${b.x} ${b.y}`;
     }
 
+    /** 终点沿方向回退，让箭头露在节点外侧 */
+    function shortenEnd(a, b, gap) {
+      const dx = b.x - a.x;
+      const dy = b.y - a.y;
+      const len = Math.hypot(dx, dy) || 1;
+      return {
+        x: b.x - (dx / len) * gap,
+        y: b.y - (dy / len) * gap,
+      };
+    }
+
     function drawEdges() {
       const w = map.clientWidth;
       const h = map.clientHeight;
@@ -298,27 +496,115 @@
 
       const defs = `
         <defs>
-          <marker id="arrow-parent" viewBox="0 0 10 10" refX="9" refY="5"
-            markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-            <path d="M 0 1.2 L 9 5 L 0 8.8 z" fill="#C4D1C2" />
+          <marker id="arrow-parent" markerUnits="userSpaceOnUse"
+            viewBox="0 0 12 12" refX="11" refY="6"
+            markerWidth="12" markerHeight="12" orient="auto">
+            <path d="M 1 1.5 L 11 6 L 1 10.5 z" fill="#C4D1C2" />
           </marker>
-          <marker id="arrow-assoc" viewBox="0 0 10 10" refX="9" refY="5"
-            markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-            <path d="M 0 1.2 L 9 5 L 0 8.8 z" fill="#CED2D9" />
+          <marker id="arrow-assoc" markerUnits="userSpaceOnUse"
+            viewBox="0 0 12 12" refX="11" refY="6"
+            markerWidth="12" markerHeight="12" orient="auto">
+            <path d="M 1 1.5 L 11 6 L 1 10.5 z" fill="#CED2D9" />
           </marker>
         </defs>`;
 
       const paths = edges.map((e) => {
-        const from = port(nodeEls[e.from], "right");
-        const to = port(nodeEls[e.to], "left");
-        // 终点略微左移，避免箭头埋进节点边框
-        to.x -= 1;
+        if (filters.relation !== "all" && e.type !== filters.relation) return "";
+
+        const fromNode = nodes.find((n) => n.id === e.from);
+        const toNode = nodes.find((n) => n.id === e.to);
+        if (!isNodeVisible(fromNode) || !isNodeVisible(toNode)) return "";
+
+        const fromEl = nodeEls[e.from];
+        const toEl = nodeEls[e.to];
+        if (!fromEl || !toEl || fromEl.classList.contains("hidden") || toEl.classList.contains("hidden")) return "";
+
+        const from = port(fromEl, "right");
+        const rawTo = port(toEl, "left");
+        const to = shortenEnd(from, rawTo, ARROW_GAP);
         const cls = e.type === "assoc" ? "assoc" : "parent";
         const marker = e.type === "assoc" ? "arrow-assoc" : "arrow-parent";
         return `<path class="${cls}" d="${curve(from, to)}" marker-end="url(#${marker})" />`;
       }).join("");
 
       svg.innerHTML = defs + paths;
+    }
+
+    function renderRoundTags() {
+      const wrap = document.getElementById("round-tags");
+      wrap.innerHTML = ["第一轮", "第二轮"]
+        .filter((r) => filters.rounds.has(r))
+        .map((r) => `
+          <span class="filter-tag" data-round="${r}">
+            ${r}
+            <button type="button" data-remove="${r}" aria-label="移除 ${r}">×</button>
+          </span>
+        `).join("");
+
+      wrap.querySelectorAll("[data-remove]").forEach((btn) => {
+        btn.addEventListener("click", (ev) => {
+          ev.stopPropagation();
+          filters.rounds.delete(btn.dataset.remove);
+          applyFilters();
+        });
+      });
+
+      // 同步菜单高亮
+      document.querySelectorAll("#round-menu .filter-option").forEach((opt) => {
+        opt.classList.toggle("active", filters.rounds.has(opt.dataset.round));
+      });
+    }
+
+    function setupFilters() {
+      const relationTrigger = document.getElementById("relation-trigger");
+      const relationMenu = document.getElementById("relation-menu");
+      const relationLabel = document.getElementById("relation-label");
+      const roundTrigger = document.getElementById("round-trigger");
+      const roundMenu = document.getElementById("round-menu");
+
+      relationTrigger.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        relationMenu.classList.toggle("open");
+        roundMenu.classList.remove("open");
+      });
+
+      roundTrigger.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        roundMenu.classList.toggle("open");
+        relationMenu.classList.remove("open");
+      });
+
+      relationMenu.querySelectorAll(".filter-option").forEach((opt) => {
+        opt.addEventListener("click", () => {
+          filters.relation = opt.dataset.value;
+          relationLabel.textContent = RELATION_LABELS[filters.relation];
+          relationMenu.querySelectorAll(".filter-option").forEach((o) => {
+            o.classList.toggle("active", o.dataset.value === filters.relation);
+          });
+          relationMenu.classList.remove("open");
+          drawEdges();
+        });
+      });
+
+      roundMenu.querySelectorAll(".filter-option").forEach((opt) => {
+        opt.addEventListener("click", () => {
+          const r = opt.dataset.round;
+          if (filters.rounds.has(r)) filters.rounds.delete(r);
+          else filters.rounds.add(r);
+          applyFilters();
+        });
+      });
+
+      document.addEventListener("click", () => {
+        relationMenu.classList.remove("open");
+        roundMenu.classList.remove("open");
+      });
+
+      document.getElementById("filter-bar").addEventListener("click", (ev) => {
+        ev.stopPropagation();
+      });
+
+      renderRoundTags();
     }
 
     function enableDrag(el, data) {
@@ -375,6 +661,7 @@
     }
 
     renderNodes();
+    setupFilters();
     window.addEventListener("resize", drawEdges);
     window.addEventListener("load", drawEdges);
     requestAnimationFrame(drawEdges);
