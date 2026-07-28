@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Entity Map</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg-canvas: #f7f7f9;
+      --bg-white: #ffffff;
+      --border: #e2e3e5;
+      --border-card: #d4d4d7;
+      --dot: #e5e6e8;
+      --text-tab: #3d3d40;
+      --text-sub: #6b6b6d;
+      --blue: #486ffb;
+      --blue-title: #4a6ef8;
+      --blue-share: #000db5;
+      --blue-selected: #7b92f0;
+      --blue-selected-bg: #f5f7ff;
+      --blue-icon: #4b78f0;
+      --chip: #e2e3e5;
+      --sidebar-w: 80px;
+      --tab-h: 54px;
+      --footer-h: 41px;
+      --top-h: 50px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      height: 100%;
+      width: 100%;
+      overflow: hidden;
+      font-family: "IBM Plex Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      background: var(--bg-canvas);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    .app {
+      display: grid;
+      grid-template-rows: var(--top-h) var(--tab-h) 1fr var(--footer-h);
+      grid-template-columns: 1fr var(--sidebar-w);
+      height: 100%;
+      width: 100%;
+      min-width: 800px;
+      background: var(--bg-canvas);
+    }
+
+    .top-spacer {
+      grid-column: 1 / -1;
+      background: var(--bg-canvas);
+      border-bottom: 1px solid #ebf0f1;
+    }
+
+    .tab-bar {
+      grid-column: 1 / -1;
+      display: flex;
+      align-items: stretch;
+      justify-content: space-between;
+      background: var(--bg-white);
+      border-bottom: 1px solid var(--border);
+      padding-left: 8px;
+      z-index: 5;
+    }
+
+    .tabs {
+      display: flex;
+      align-items: stretch;
+      min-width: 0;
+      overflow: hidden;
+    }
+
+    .tab {
+      display: flex;
+      align-items: center;
+      padding: 0 13px;
+      font-size: 11.5px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #4a4a4e;
+      position: relative;
+      white-space: nowrap;
+      user-select: none;
+    }
+
+    .tab.active { color: var(--blue); }
+
+    .tab.active::after {
+      content: "";
+      position: absolute;
+      left: 12px;
+      right: 12px;
+      bottom: -1px;
+      height: 2px;
+      background: var(--blue);
+    }
+
+    .tab-more {
+      display: flex;
+      align-items: center;
+      padding: 0 10px 0 6px;
+      color: #8b8b8f;
+    }
+
+    .tab-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding-right: 16px;
+      flex-shrink: 0;
+    }
+
+    .btn-share {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      height: 36px;
+      padding: 0 14px 0 12px;
+      background: var(--blue-share);
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: default;
+    }
+
+    .btn-copy {
+      width: 36px;
+      height: 36px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: #fff;
+      border: 2px solid #000db5;
+      border-radius: 6px;
+      color: #000db5;
+      cursor: default;
+      padding: 0;
+    }
+
+    .btn-copy:hover { background: #f7f8ff; }
+
+    .map {
+      position: relative;
+      overflow: hidden;
+      background-color: var(--bg-canvas);
+      background-image: radial-gradient(circle, var(--dot) 1.15px, transparent 1.25px);
+      background-size: 24px 24px;
+      background-position: 10px 6px;
+    }
+
+    .edges {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      overflow: visible;
+    }
+
+    .edges path {
+      fill: none;
+      stroke: #c8c8cc;
+      stroke-width: 1.2;
+    }
+
+    .node {
+      position: absolute;
+      background: #fff;
+      border: 1px solid var(--border-card);
+      border-radius: 4px;
+      padding: 8px 9px 9px;
+      box-shadow: 0 1px 2px rgba(16, 16, 20, 0.05);
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 7px;
+      z-index: 2;
+    }
+
+    .node.selected {
+      border-color: var(--blue-selected);
+      background: var(--blue-selected-bg);
+      box-shadow: 0 0 0 0.5px rgba(72, 111, 251, 0.25);
+    }
+
+    .node-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: var(--chip);
+      border-radius: 3px;
+      padding: 3px 8px 3px 5px;
+      min-height: 22px;
+      max-width: 100%;
+    }
+
+    .node.selected .node-chip { background: #dfe3ec; }
+
+    .node-chip .icon {
+      flex-shrink: 0;
+      width: 13px;
+      height: 13px;
+      color: var(--blue-icon);
+      display: block;
+    }
+
+    .node-id {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--blue-title);
+      line-height: 1.15;
+      white-space: nowrap;
+    }
+
+    .node-type {
+      font-size: 12px;
+      color: var(--text-sub);
+      line-height: 1.15;
+      padding-left: 1px;
+      white-space: nowrap;
+    }
+
+    /* Positions from reference screenshot (map area) */
+    .n-root { left: 4.15%; top: 61.13%; }
+    .n-l005 { left: 46.86%; top: 45.45%; }
+    .n-s001 { left: 46.86%; top: 55.49%; }
+    .n-l004 { left: 46.86%; top: 63.53%; }
+    .n-r1   { left: 96.2%; top: 50.68%; }
+    .n-r2   { left: 96.2%; top: 62.70%; }
+    .n-r3   { left: 96.2%; top: 73.15%; }
+
+    .zoom-bar {
+      position: absolute;
+      left: 26px;
+      bottom: 26px;
+      display: flex;
+      align-items: center;
+      height: 40px;
+      background: #fff;
+      border: 1px solid #e4e4e6;
+      border-radius: 6px;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+      z-index: 10;
+    }
+
+    .zoom-group { display: flex; align-items: center; height: 100%; }
+
+    .zoom-btn {
+      width: 34px;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: none;
+      background: transparent;
+      color: #2c2c30;
+      cursor: default;
+      padding: 0;
+    }
+
+    .zoom-pct {
+      min-width: 38px;
+      text-align: center;
+      font-size: 13px;
+      font-weight: 500;
+      color: #1b1b1d;
+      font-variant-numeric: tabular-nums;
+      user-select: none;
+    }
+
+    .zoom-divider {
+      width: 1px;
+      height: 22px;
+      background: #e6e6e8;
+      margin: 0 2px;
+    }
+
+    .rail {
+      position: relative;
+      background: var(--bg-white);
+      border-left: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding-top: 16px;
+    }
+
+    .info-btn {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #4a4a4e;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 700;
+      font-style: italic;
+      font-family: Georgia, "Times New Roman", serif;
+      line-height: 1;
+      user-select: none;
+    }
+
+    .chat-btn {
+      position: absolute;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: var(--blue-share);
+      border: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: default;
+      box-shadow: 0 2px 10px rgba(0, 13, 181, 0.32);
+      padding: 0;
+      z-index: 12;
+    }
+
+    .footer {
+      grid-column: 1 / -1;
+      background: linear-gradient(#dcdce0, #d0d0d4);
+      border-top: 1px solid #bdc3c7;
+      display: flex;
+      align-items: stretch;
+      justify-content: flex-end;
+      z-index: 6;
+    }
+
+    .split-tab {
+      display: flex;
+      align-items: center;
+      padding: 0 18px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      color: #1a1a1c;
+      background: linear-gradient(#e8e8eb, #d6d6da);
+      border-left: 1px solid #c4c4c8;
+      box-shadow: -1px 0 2px rgba(0, 0, 0, 0.05);
+      user-select: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="top-spacer"></div>
+
+    <header class="tab-bar">
+      <nav class="tabs">
+        <div class="tab active">Entity Map</div>
+        <div class="tab">Relevant Items</div>
+        <div class="tab">Description</div>
+        <div class="tab">Results</div>
+        <div class="tab">Inventory</div>
+        <div class="tab-more" aria-label="More">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+            <circle cx="3" cy="8" r="1.35"/>
+            <circle cx="8" cy="8" r="1.35"/>
+            <circle cx="13" cy="8" r="1.35"/>
+          </svg>
+        </div>
+      </nav>
+      <div class="tab-actions">
+        <button class="btn-share" type="button">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6 3H3.5A1.5 1.5 0 0 0 2 4.5v6A1.5 1.5 0 0 0 3.5 12h6A1.5 1.5 0 0 0 11 10.5V8"/>
+            <path d="M8 2h4v4"/>
+            <path d="M7 7l5-5"/>
+          </svg>
+          Share
+        </button>
+        <button class="btn-copy" type="button" aria-label="Duplicate">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <rect x="2" y="2" width="9" height="9" rx="1.5" stroke="#000db5" stroke-width="1.5"/>
+            <rect x="5" y="5" width="9" height="9" rx="1.5" fill="#fff" stroke="#000db5" stroke-width="1.5"/>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <div class="map" id="map">
+      <svg class="edges" id="edges" xmlns="http://www.w3.org/2000/svg"></svg>
+
+      <div class="node selected n-root" id="n-root">
+        <div class="node-chip">
+          <svg class="icon" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.55" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M7 12.2V7"/>
+            <path d="M7 7L3.4 2.9"/>
+            <path d="M7 7L10.6 2.9"/>
+            <path d="M5.3 12.2h3.4"/>
+          </svg>
+          <span class="node-id">mAB001</span>
+        </div>
+        <div class="node-type">Antibody</div>
+      </div>
+
+      <div class="node n-l005" id="n-l005">
+        <div class="node-chip">
+          <svg class="icon" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.55" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M7 12.2V7"/>
+            <path d="M7 7L3.4 2.9"/>
+            <path d="M7 7L10.6 2.9"/>
+            <path d="M5.3 12.2h3.4"/>
+          </svg>
+          <span class="node-id">mAB001_L005</span>
+        </div>
+        <div class="node-type">Purified Antibody</div>
+      </div>
+
+      <div class="node n-s001" id="n-s001">
+        <div class="node-chip">
+          <svg class="icon" viewBox="0 0 14 14" fill="currentColor">
+            <path d="M3.6 2.1h6.8v1.15H9.4v1.15c1.35.35 2.25 1.45 2.25 2.95v4.7c0 .55-.45 1-1 1H3.35c-.55 0-1-.45-1-1V7.35c0-1.5.9-2.6 2.25-2.95V3.25H3.6V2.1zm1.7 2.3v.85l-.35.1c-.95.28-1.5 1-1.5 2v1.55h7.1V7.35c0-1-.55-1.72-1.5-2l-.35-.1v-.85H5.3z"/>
+          </svg>
+          <span class="node-id">mAB001_S001</span>
+        </div>
+        <div class="node-type">Supernatant</div>
+      </div>
+
+      <div class="node n-l004" id="n-l004">
+        <div class="node-chip">
+          <svg class="icon" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.55" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M7 12.2V7"/>
+            <path d="M7 7L3.4 2.9"/>
+            <path d="M7 7L10.6 2.9"/>
+            <path d="M5.3 12.2h3.4"/>
+          </svg>
+          <span class="node-id">mAB001_L004</span>
+        </div>
+        <div class="node-type">Purified Antibody</div>
+      </div>
+
+      <div class="node n-r1" id="n-r1">
+        <div class="node-chip">
+          <svg class="icon" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.55" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M7 12.2V7"/>
+            <path d="M7 7L3.4 2.9"/>
+            <path d="M7 7L10.6 2.9"/>
+            <path d="M5.3 12.2h3.4"/>
+          </svg>
+          <span class="node-id">mAB001_L006</span>
+        </div>
+        <div class="node-type">Purified Antibody</div>
+      </div>
+
+      <div class="node n-r2" id="n-r2">
+        <div class="node-chip">
+          <svg class="icon" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.55" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M7 12.2V7"/>
+            <path d="M7 7L3.4 2.9"/>
+            <path d="M7 7L10.6 2.9"/>
+            <path d="M5.3 12.2h3.4"/>
+          </svg>
+          <span class="node-id">mAB001_L007</span>
+        </div>
+        <div class="node-type">Purified Antibody</div>
+      </div>
+
+      <div class="node n-r3" id="n-r3">
+        <div class="node-chip">
+          <svg class="icon" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.55" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M7 12.2V7"/>
+            <path d="M7 7L3.4 2.9"/>
+            <path d="M7 7L10.6 2.9"/>
+            <path d="M5.3 12.2h3.4"/>
+          </svg>
+          <span class="node-id">mAB001_L008</span>
+        </div>
+        <div class="node-type">Purified Antibody</div>
+      </div>
+
+      <div class="zoom-bar">
+        <div class="zoom-group">
+          <button class="zoom-btn" type="button" aria-label="Zoom out">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M3 7h8"/></svg>
+          </button>
+          <span class="zoom-pct">61%</span>
+          <button class="zoom-btn" type="button" aria-label="Zoom in">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M7 3v8M3 7h8"/></svg>
+          </button>
+        </div>
+        <div class="zoom-divider"></div>
+        <div class="zoom-group">
+          <button class="zoom-btn" type="button" aria-label="Fit">
+            <svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M2 5.5V2h3.5M13 5.5V2H9.5M2 9.5V13h3.5M13 9.5V13H9.5"/>
+            </svg>
+          </button>
+          <button class="zoom-btn" type="button" aria-label="Recenter">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round">
+              <circle cx="8" cy="8" r="3.4"/>
+              <circle cx="8" cy="8" r="1" fill="currentColor" stroke="none"/>
+              <path d="M8 1.25v2M8 12.75v2M1.25 8h2M12.75 8h2"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <aside class="rail">
+      <div class="info-btn">i</div>
+      <button class="chat-btn" type="button" aria-label="Help">
+        <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+          <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3h9A2.5 2.5 0 0 1 18 5.5v7A2.5 2.5 0 0 1 15.5 15H9.2L5.4 18.2c-.5.4-1.2.1-1.2-.5V5.5z" fill="#fff"/>
+          <path d="M7.2 7.3h7.6M7.2 10.1h5.2" stroke="#000db5" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+      </button>
+    </aside>
+
+    <footer class="footer">
+      <div class="split-tab">SPLIT WORKSPACE</div>
+    </footer>
+  </div>
+
+  <script>
+    function port(el, side) {
+      const map = document.getElementById("map");
+      const mr = map.getBoundingClientRect();
+      const r = el.getBoundingClientRect();
+      const y = r.top - mr.top + r.height / 2;
+      return side === "right"
+        ? { x: r.right - mr.left, y }
+        : { x: r.left - mr.left, y };
+    }
+
+    function curve(a, b) {
+      const dx = Math.max(48, (b.x - a.x) * 0.48);
+      return `M ${a.x} ${a.y} C ${a.x + dx} ${a.y}, ${b.x - dx} ${b.y}, ${b.x} ${b.y}`;
+    }
+
+    function drawEdges() {
+      const svg = document.getElementById("edges");
+      const map = document.getElementById("map");
+      const w = map.clientWidth;
+      const h = map.clientHeight;
+      svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
+      svg.setAttribute("width", w);
+      svg.setAttribute("height", h);
+
+      const pairs = [
+        ["n-root", "n-l005"],
+        ["n-root", "n-s001"],
+        ["n-root", "n-l004"],
+        ["n-l005", "n-r1"],
+        ["n-s001", "n-r1"],
+        ["n-s001", "n-r2"],
+        ["n-s001", "n-r3"],
+        ["n-l004", "n-r2"],
+        ["n-l004", "n-r3"],
+      ];
+
+      svg.innerHTML = pairs.map(([a, b]) => {
+        const from = port(document.getElementById(a), "right");
+        const to = port(document.getElementById(b), "left");
+        return `<path d="${curve(from, to)}" />`;
+      }).join("");
+    }
+
+    window.addEventListener("resize", drawEdges);
+    window.addEventListener("load", drawEdges);
+    requestAnimationFrame(drawEdges);
+  </script>
+</body>
+</html>
