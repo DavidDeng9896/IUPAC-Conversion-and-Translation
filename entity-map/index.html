@@ -1028,10 +1028,9 @@
       drawEdges();
     }
 
-    /** 选中节点的上下关系边：直接相连的父子边（入边/出边） */
+    /** 选中节点直接相连的上下游边：父子 + 关联 */
     function isEdgeRelatedToSelection(edge, selectedId) {
       if (!selectedId) return false;
-      if (edge.type !== "parent") return false;
       return edge.from === selectedId || edge.to === selectedId;
     }
 
