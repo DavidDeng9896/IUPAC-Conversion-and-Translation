@@ -611,12 +611,12 @@
       </div>
       <div class="zoom-divider"></div>
       <div class="zoom-group">
-        <button class="zoom-btn" type="button" id="zoom-fit" aria-label="适应画布">
+        <button class="zoom-btn" type="button" id="zoom-fit" aria-label="定位到选中节点并100%显示" title="定位到选中节点 · 100%">
           <svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
             <path d="M2 5.5V2h3.5M13 5.5V2H9.5M2 9.5V13h3.5M13 9.5V13H9.5"/>
           </svg>
         </button>
-        <button class="zoom-btn" type="button" id="zoom-center" aria-label="居中">
+        <button class="zoom-btn" type="button" id="zoom-center" aria-label="定位到选中节点并100%显示" title="定位到选中节点 · 100%">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round">
             <circle cx="8" cy="8" r="3.4"/>
             <circle cx="8" cy="8" r="1" fill="currentColor" stroke="none"/>
@@ -661,7 +661,7 @@
 
     const nodes = [
       {
-        id: "root", label: "PDL1-WT01", sub: "", round: null, x: 80, y: 360, selected: true,
+        id: "root", label: "PDL1-WT01", sub: "", round: null, x: 80, y: 360, selected: false,
         meta: {
           objectType: "Antibody Complex",
           serial: "PDL001-20260112-001",
@@ -896,6 +896,44 @@
       applyViewTransform();
     }
 
+    function getSelectedNode() {
+      return nodes.find((n) => n.selected) || (activePopoverNodeId ? getNodeById(activePopoverNodeId) : null);
+    }
+
+    /** 100% 视图，并把当前选中节点放到合适位置（略偏左上的舒适视区） */
+    function focusSelectedAt100() {
+      const node = getSelectedNode();
+      if (!node) {
+        // 没有选中时退回整体居中 + 100%
+        view.scale = 1;
+        centerView();
+        applyViewTransform();
+        return;
+      }
+      const el = nodeEls[node.id];
+      if (!el) return;
+
+      view.scale = 1;
+      const nw = el.offsetWidth || 168;
+      const nh = el.offsetHeight || 56;
+      // 节点落在视口约 35% / 40% 处，避免贴边
+      view.panX = map.clientWidth * 0.35 - (node.x + nw / 2);
+      view.panY = map.clientHeight * 0.4 - (node.y + nh / 2);
+      applyViewTransform();
+
+      if (activePopoverNodeId === node.id) {
+        requestAnimationFrame(() => positionPopover(el));
+      }
+    }
+
+    function setSelectedNode(nodeId) {
+      nodes.forEach((n) => {
+        n.selected = n.id === nodeId;
+        const el = nodeEls[n.id];
+        if (el) el.classList.toggle("selected", n.selected);
+      });
+    }
+
     function setupZoomControls() {
       document.getElementById("zoom-in").addEventListener("click", () => {
         // 优先跳到更高的常用倍数
@@ -907,8 +945,8 @@
         const next = prevs.length ? prevs[prevs.length - 1] : Math.max(view.min, view.scale - view.step);
         setZoom(next);
       });
-      document.getElementById("zoom-fit").addEventListener("click", fitView);
-      document.getElementById("zoom-center").addEventListener("click", centerView);
+      document.getElementById("zoom-fit").addEventListener("click", focusSelectedAt100);
+      document.getElementById("zoom-center").addEventListener("click", focusSelectedAt100);
 
       zoomPctBtn.addEventListener("click", (ev) => {
         ev.stopPropagation();
@@ -1167,8 +1205,9 @@
         try { el.releasePointerCapture(ev.pointerId); } catch (_) {}
         drawEdges();
 
-        // 点击并释放（非拖拽）→ 打开浮窗
+        // 点击并释放（非拖拽）→ 选中高亮并打开浮窗
         if (!moved) {
+          setSelectedNode(data.id);
           showPopover(data, el);
         }
       };
