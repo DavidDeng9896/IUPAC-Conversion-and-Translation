@@ -649,6 +649,7 @@
         <div class="filter-menu" id="round-menu">
           <button class="filter-option" type="button" data-round="第一轮">第一轮</button>
           <button class="filter-option" type="button" data-round="第二轮">第二轮</button>
+          <button class="filter-option" type="button" data-round="第三轮">第三轮</button>
         </div>
       </div>
 
@@ -849,6 +850,21 @@
           mw: "145455.2",
         },
       },
+      {
+        id: "r3a", label: "CAND-PDL1-007", sub: "轮次/阶段：第三轮", round: "第三轮", x: 1140, y: 500,
+        meta: {
+          objectType: "Antibody Complex",
+          serial: "PDL001-20260112-015",
+          project: "PDL1-01",
+          creator: "david",
+          createdAt: "2026-01-25 10:18:36",
+          antigen: "Antigen001",
+          isotype: "IgG",
+          ptm: "0.65",
+          proteolytic: "0.46",
+          mw: "145502.7",
+        },
+      },
     ];
 
     const edges = [
@@ -858,9 +874,11 @@
       { from: "root", to: "r2a", type: "parent" },
       { from: "root", to: "r2b", type: "parent" },
       { from: "root", to: "r2c", type: "parent" },
+      { from: "root", to: "r3a", type: "parent" },
       { from: "r1a", to: "r2a", type: "assoc" },
       { from: "r1a", to: "r2b", type: "assoc" },
       { from: "r1b", to: "r2c", type: "assoc" },
+      { from: "r2c", to: "r3a", type: "assoc" },
     ];
 
     const RELATION_LABELS = {
@@ -871,7 +889,7 @@
 
     const filters = {
       relation: "all",
-      rounds: new Set(["第一轮", "第二轮"]),
+      rounds: new Set(["第一轮", "第二轮", "第三轮"]),
     };
 
     const view = {
@@ -1220,7 +1238,7 @@
 
     function renderRoundTags() {
       const wrap = document.getElementById("round-tags");
-      wrap.innerHTML = ["第一轮", "第二轮"]
+      wrap.innerHTML = ["第一轮", "第二轮", "第三轮"]
         .filter((r) => filters.rounds.has(r))
         .map((r) => `
           <span class="filter-tag" data-round="${r}">
