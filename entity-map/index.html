@@ -45,6 +45,16 @@
       touch-action: none;
     }
 
+    .stage {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      transform-origin: 0 0;
+      will-change: transform;
+    }
+
     /* —— 左上角筛选条 —— */
     .filter-bar {
       position: absolute;
@@ -65,9 +75,7 @@
       user-select: none;
     }
 
-    .filter-dropdown {
-      position: relative;
-    }
+    .filter-dropdown { position: relative; }
 
     .filter-trigger {
       display: inline-flex;
@@ -85,13 +93,7 @@
     }
 
     .filter-trigger:hover { background: #f3f4f6; }
-
-    .filter-trigger svg {
-      width: 12px;
-      height: 12px;
-      color: #6b6b6f;
-      flex-shrink: 0;
-    }
+    .filter-trigger svg { width: 12px; height: 12px; color: #6b6b6f; flex-shrink: 0; }
 
     .filter-menu {
       display: none;
@@ -303,12 +305,15 @@
       border: none;
       background: transparent;
       color: #2c2c30;
-      cursor: default;
+      cursor: pointer;
       padding: 0;
     }
 
+    .zoom-btn:hover { background: #f3f4f6; }
+    .zoom-btn:active { background: #ebebef; }
+
     .zoom-pct {
-      min-width: 38px;
+      min-width: 42px;
       text-align: center;
       font-size: 13px;
       font-weight: 500;
@@ -324,7 +329,6 @@
       margin: 0 2px;
     }
 
-    /* —— 右下角连线图例 —— */
     .edge-legend {
       position: absolute;
       right: 26px;
@@ -365,6 +369,10 @@
 </head>
 <body>
   <div class="map" id="map">
+    <div class="stage" id="stage">
+      <svg class="edges" id="edges" xmlns="http://www.w3.org/2000/svg"></svg>
+    </div>
+
     <div class="filter-bar" id="filter-bar">
       <div class="filter-dropdown" id="relation-dropdown">
         <button class="filter-trigger" type="button" id="relation-trigger">
@@ -393,26 +401,24 @@
       </div>
     </div>
 
-    <svg class="edges" id="edges" xmlns="http://www.w3.org/2000/svg"></svg>
-
     <div class="zoom-bar">
       <div class="zoom-group">
-        <button class="zoom-btn" type="button" aria-label="Zoom out">
+        <button class="zoom-btn" type="button" id="zoom-out" aria-label="缩小">
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M3 7h8"/></svg>
         </button>
-        <span class="zoom-pct">61%</span>
-        <button class="zoom-btn" type="button" aria-label="Zoom in">
+        <span class="zoom-pct" id="zoom-pct">61%</span>
+        <button class="zoom-btn" type="button" id="zoom-in" aria-label="放大">
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M7 3v8M3 7h8"/></svg>
         </button>
       </div>
       <div class="zoom-divider"></div>
       <div class="zoom-group">
-        <button class="zoom-btn" type="button" aria-label="Fit">
+        <button class="zoom-btn" type="button" id="zoom-fit" aria-label="适应画布">
           <svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
             <path d="M2 5.5V2h3.5M13 5.5V2H9.5M2 9.5V13h3.5M13 9.5V13H9.5"/>
           </svg>
         </button>
-        <button class="zoom-btn" type="button" aria-label="Recenter">
+        <button class="zoom-btn" type="button" id="zoom-center" aria-label="居中">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round">
             <circle cx="8" cy="8" r="3.4"/>
             <circle cx="8" cy="8" r="1" fill="currentColor" stroke="none"/>
@@ -449,14 +455,15 @@
         <path d="M5.3 12.2h3.4"/>
       </svg>`;
 
+    // 世界坐标（逻辑像素，缩放前）
     const nodes = [
-      { id: "root", label: "PDL1-WT01", sub: "", round: null, xPct: 6, yPct: 48, selected: true },
-      { id: "r1a", label: "CAND-PDL1-001", sub: "轮次/阶段：第一轮", round: "第一轮", xPct: 38, yPct: 18 },
-      { id: "r1b", label: "CAND-PDL1-002", sub: "轮次/阶段：第一轮", round: "第一轮", xPct: 38, yPct: 42 },
-      { id: "r1c", label: "CAND-PDL1-003", sub: "轮次/阶段：第一轮", round: "第一轮", xPct: 38, yPct: 66 },
-      { id: "r2a", label: "CAND-PDL1-004", sub: "轮次/阶段：第二轮", round: "第二轮", xPct: 72, yPct: 18 },
-      { id: "r2b", label: "CAND-PDL1-005", sub: "轮次/阶段：第二轮", round: "第二轮", xPct: 72, yPct: 42 },
-      { id: "r2c", label: "CAND-PDL1-006", sub: "轮次/阶段：第二轮", round: "第二轮", xPct: 72, yPct: 66 },
+      { id: "root", label: "PDL1-WT01", sub: "", round: null, x: 80, y: 360, selected: true },
+      { id: "r1a", label: "CAND-PDL1-001", sub: "轮次/阶段：第一轮", round: "第一轮", x: 420, y: 140 },
+      { id: "r1b", label: "CAND-PDL1-002", sub: "轮次/阶段：第一轮", round: "第一轮", x: 420, y: 320 },
+      { id: "r1c", label: "CAND-PDL1-003", sub: "轮次/阶段：第一轮", round: "第一轮", x: 420, y: 500 },
+      { id: "r2a", label: "CAND-PDL1-004", sub: "轮次/阶段：第二轮", round: "第二轮", x: 780, y: 140 },
+      { id: "r2b", label: "CAND-PDL1-005", sub: "轮次/阶段：第二轮", round: "第二轮", x: 780, y: 320 },
+      { id: "r2c", label: "CAND-PDL1-006", sub: "轮次/阶段：第二轮", round: "第二轮", x: 780, y: 500 },
     ];
 
     const edges = [
@@ -482,10 +489,111 @@
       rounds: new Set(["第一轮", "第二轮"]),
     };
 
+    const view = {
+      scale: 0.61,
+      panX: 40,
+      panY: 40,
+      min: 0.25,
+      max: 2,
+      step: 0.1,
+    };
+
     const map = document.getElementById("map");
+    const stage = document.getElementById("stage");
     const svg = document.getElementById("edges");
+    const zoomPctEl = document.getElementById("zoom-pct");
     const nodeEls = {};
     const ARROW_SIZE = 9;
+
+    function applyViewTransform() {
+      stage.style.transform = `translate(${view.panX}px, ${view.panY}px) scale(${view.scale})`;
+      zoomPctEl.textContent = Math.round(view.scale * 100) + "%";
+    }
+
+    function setZoom(next, anchorClientX, anchorClientY) {
+      const prev = view.scale;
+      const scale = Math.min(view.max, Math.max(view.min, next));
+      if (scale === prev) {
+        zoomPctEl.textContent = Math.round(scale * 100) + "%";
+        return;
+      }
+
+      const rect = map.getBoundingClientRect();
+      const ax = (anchorClientX ?? rect.left + rect.width / 2) - rect.left;
+      const ay = (anchorClientY ?? rect.top + rect.height / 2) - rect.top;
+
+      // 锚点下的世界坐标保持不变
+      const worldX = (ax - view.panX) / prev;
+      const worldY = (ay - view.panY) / prev;
+      view.scale = scale;
+      view.panX = ax - worldX * scale;
+      view.panY = ay - worldY * scale;
+      applyViewTransform();
+    }
+
+    function getContentBounds() {
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      let any = false;
+      nodes.forEach((n) => {
+        if (!isNodeVisible(n)) return;
+        const el = nodeEls[n.id];
+        if (!el) return;
+        any = true;
+        const w = el.offsetWidth;
+        const h = el.offsetHeight;
+        minX = Math.min(minX, n.x);
+        minY = Math.min(minY, n.y);
+        maxX = Math.max(maxX, n.x + w);
+        maxY = Math.max(maxY, n.y + h);
+      });
+      if (!any) return null;
+      return { minX, minY, maxX, maxY, width: maxX - minX, height: maxY - minY };
+    }
+
+    function fitView() {
+      const bounds = getContentBounds();
+      if (!bounds) return;
+      const pad = 80;
+      const vw = map.clientWidth;
+      const vh = map.clientHeight;
+      const scale = Math.min(
+        view.max,
+        Math.max(view.min, Math.min((vw - pad * 2) / bounds.width, (vh - pad * 2) / bounds.height))
+      );
+      view.scale = scale;
+      view.panX = (vw - bounds.width * scale) / 2 - bounds.minX * scale;
+      view.panY = (vh - bounds.height * scale) / 2 - bounds.minY * scale;
+      applyViewTransform();
+    }
+
+    function centerView() {
+      const bounds = getContentBounds();
+      if (!bounds) return;
+      const cx = (bounds.minX + bounds.maxX) / 2;
+      const cy = (bounds.minY + bounds.maxY) / 2;
+      view.panX = map.clientWidth / 2 - cx * view.scale;
+      view.panY = map.clientHeight / 2 - cy * view.scale;
+      applyViewTransform();
+    }
+
+    function setupZoomControls() {
+      document.getElementById("zoom-in").addEventListener("click", () => {
+        setZoom(view.scale + view.step);
+      });
+      document.getElementById("zoom-out").addEventListener("click", () => {
+        setZoom(view.scale - view.step);
+      });
+      document.getElementById("zoom-fit").addEventListener("click", fitView);
+      document.getElementById("zoom-center").addEventListener("click", centerView);
+
+      // 滚轮缩放（以鼠标位置为锚点）
+      map.addEventListener("wheel", (ev) => {
+        if (ev.target.closest(".filter-bar, .zoom-bar, .edge-legend")) return;
+        ev.preventDefault();
+        const delta = ev.deltaY > 0 ? -view.step : view.step;
+        setZoom(view.scale + delta, ev.clientX, ev.clientY);
+      }, { passive: false });
+    }
 
     function renderNodes() {
       nodes.forEach((n) => {
@@ -493,13 +601,13 @@
         el.className = "node" + (n.selected ? " selected" : "");
         el.id = "node-" + n.id;
         el.dataset.id = n.id;
-        el.style.left = n.xPct + "%";
-        el.style.top = n.yPct + "%";
+        el.style.left = n.x + "px";
+        el.style.top = n.y + "px";
         el.innerHTML = `
           <div class="node-chip">${ICON_Y}<span class="node-id">${n.label}</span></div>
           ${n.sub ? `<div class="node-type">${n.sub}</div>` : ""}
         `;
-        map.insertBefore(el, map.querySelector(".zoom-bar"));
+        stage.appendChild(el);
         nodeEls[n.id] = el;
         enableDrag(el, n);
       });
@@ -521,12 +629,10 @@
     }
 
     function port(el, side) {
-      const mr = map.getBoundingClientRect();
-      const r = el.getBoundingClientRect();
-      const y = r.top - mr.top + r.height / 2;
-      return side === "right"
-        ? { x: r.right - mr.left, y }
-        : { x: r.left - mr.left, y };
+      // stage 本地坐标（不受缩放影响）
+      const y = el.offsetTop + el.offsetHeight / 2;
+      const x = side === "right" ? el.offsetLeft + el.offsetWidth : el.offsetLeft;
+      return { x, y };
     }
 
     function curve(a, b) {
@@ -534,7 +640,6 @@
       return `M ${a.x} ${a.y} C ${a.x + dx} ${a.y}, ${b.x - dx} ${b.y}, ${b.x} ${b.y}`;
     }
 
-    /** 沿 a→b 方向，从 tip 回退 length 得到点 */
     function alongBack(a, tip, length) {
       const dx = tip.x - a.x;
       const dy = tip.y - a.y;
@@ -545,7 +650,6 @@
       };
     }
 
-    /** 箭头：尖端在 tip（贴节点左边），底边朝来源方向 */
     function arrowPath(a, tip, size) {
       const base = alongBack(a, tip, size);
       const dx = tip.x - a.x;
@@ -557,14 +661,16 @@
     }
 
     function drawEdges() {
-      const w = map.clientWidth;
-      const h = map.clientHeight;
+      // stage 足够大，覆盖节点世界坐标范围
+      const bounds = getContentBounds() || { minX: 0, minY: 0, maxX: 1200, maxY: 800 };
+      const pad = 400;
+      const w = Math.max(map.clientWidth / view.scale + 800, bounds.maxX + pad);
+      const h = Math.max(map.clientHeight / view.scale + 800, bounds.maxY + pad);
       svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
       svg.setAttribute("width", w);
       svg.setAttribute("height", h);
 
       const parts = [];
-
       edges.forEach((e) => {
         if (filters.relation !== "all" && e.type !== filters.relation) return;
 
@@ -577,8 +683,8 @@
         if (!fromEl || !toEl || fromEl.classList.contains("hidden") || toEl.classList.contains("hidden")) return;
 
         const from = port(fromEl, "right");
-        const tip = port(toEl, "left"); // 箭头尖端贴目标节点左缘中点
-        const lineEnd = alongBack(from, tip, ARROW_SIZE - 1); // 线段止于箭头底边，避免叠线
+        const tip = port(toEl, "left");
+        const lineEnd = alongBack(from, tip, ARROW_SIZE - 1);
         const cls = e.type === "assoc" ? "assoc" : "parent";
 
         parts.push(`<path class="line ${cls}" d="${curve(from, lineEnd)}" />`);
@@ -607,7 +713,6 @@
         });
       });
 
-      // 同步菜单高亮
       document.querySelectorAll("#round-menu .filter-option").forEach((opt) => {
         opt.classList.toggle("active", filters.rounds.has(opt.dataset.round));
       });
@@ -669,8 +774,8 @@
       let dragging = false;
       let startX = 0;
       let startY = 0;
-      let originLeft = 0;
-      let originTop = 0;
+      let originX = 0;
+      let originY = 0;
 
       const onPointerDown = (ev) => {
         if (ev.button !== undefined && ev.button !== 0) return;
@@ -679,28 +784,21 @@
         el.setPointerCapture(ev.pointerId);
         startX = ev.clientX;
         startY = ev.clientY;
-        originLeft = el.offsetLeft;
-        originTop = el.offsetTop;
-        el.style.left = originLeft + "px";
-        el.style.top = originTop + "px";
+        originX = data.x;
+        originY = data.y;
         ev.preventDefault();
+        ev.stopPropagation();
       };
 
       const onPointerMove = (ev) => {
         if (!dragging) return;
-        const dx = ev.clientX - startX;
-        const dy = ev.clientY - startY;
-        const mr = map.getBoundingClientRect();
-        let left = originLeft + dx;
-        let top = originTop + dy;
-        const maxL = Math.max(0, mr.width - el.offsetWidth);
-        const maxT = Math.max(0, mr.height - el.offsetHeight);
-        left = Math.min(Math.max(0, left), maxL);
-        top = Math.min(Math.max(0, top), maxT);
-        el.style.left = left + "px";
-        el.style.top = top + "px";
-        data.xPct = (left / mr.width) * 100;
-        data.yPct = (top / mr.height) * 100;
+        // 屏幕位移换算成世界坐标位移
+        const dx = (ev.clientX - startX) / view.scale;
+        const dy = (ev.clientY - startY) / view.scale;
+        data.x = originX + dx;
+        data.y = originY + dy;
+        el.style.left = data.x + "px";
+        el.style.top = data.y + "px";
         drawEdges();
       };
 
@@ -718,11 +816,55 @@
       el.addEventListener("pointercancel", onPointerUp);
     }
 
+    // 空白处拖动画布平移
+    function setupPan() {
+      let panning = false;
+      let sx = 0, sy = 0, ox = 0, oy = 0;
+
+      map.addEventListener("pointerdown", (ev) => {
+        if (ev.button !== 0) return;
+        if (ev.target.closest(".node, .filter-bar, .zoom-bar, .edge-legend, .filter-menu")) return;
+        panning = true;
+        map.setPointerCapture(ev.pointerId);
+        sx = ev.clientX;
+        sy = ev.clientY;
+        ox = view.panX;
+        oy = view.panY;
+        map.style.cursor = "grabbing";
+      });
+
+      map.addEventListener("pointermove", (ev) => {
+        if (!panning) return;
+        view.panX = ox + (ev.clientX - sx);
+        view.panY = oy + (ev.clientY - sy);
+        applyViewTransform();
+      });
+
+      const endPan = (ev) => {
+        if (!panning) return;
+        panning = false;
+        map.style.cursor = "";
+        try { map.releasePointerCapture(ev.pointerId); } catch (_) {}
+      };
+
+      map.addEventListener("pointerup", endPan);
+      map.addEventListener("pointercancel", endPan);
+    }
+
     renderNodes();
     setupFilters();
-    window.addEventListener("resize", drawEdges);
-    window.addEventListener("load", drawEdges);
-    requestAnimationFrame(drawEdges);
+    setupZoomControls();
+    setupPan();
+    applyViewTransform();
+    window.addEventListener("resize", () => {
+      drawEdges();
+    });
+    window.addEventListener("load", () => {
+      drawEdges();
+    });
+    requestAnimationFrame(() => {
+      drawEdges();
+    });
   </script>
 </body>
 </html>
