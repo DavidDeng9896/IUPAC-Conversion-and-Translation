@@ -55,8 +55,17 @@
 
     .edges path {
       fill: none;
-      stroke: #c8c8cc;
-      stroke-width: 1.2;
+      stroke-width: 1.5;
+    }
+
+    .edges path.parent {
+      stroke: #9bb89a;
+    }
+
+    .edges path.assoc {
+      stroke: #b0b0b4;
+      stroke-dasharray: 5 4;
+      stroke-width: 1.4;
     }
 
     .node {
@@ -231,12 +240,17 @@
     ];
 
     const edges = [
-      { from: "root", to: "r1a" },
-      { from: "root", to: "r1b" },
-      { from: "root", to: "r1c" },
-      { from: "root", to: "r2b" },
-      { from: "r1a", to: "r2a" },
-      { from: "r1b", to: "r2c" },
+      // 父级关系：PDL1-WT01 → 其余全部
+      { from: "root", to: "r1a", type: "parent" },
+      { from: "root", to: "r1b", type: "parent" },
+      { from: "root", to: "r1c", type: "parent" },
+      { from: "root", to: "r2a", type: "parent" },
+      { from: "root", to: "r2b", type: "parent" },
+      { from: "root", to: "r2c", type: "parent" },
+      // 关联关系：虚线
+      { from: "r1a", to: "r2a", type: "assoc" }, // 001 → 004
+      { from: "r1a", to: "r2b", type: "assoc" }, // 001 → 005
+      { from: "r1b", to: "r2c", type: "assoc" }, // 002 → 006
     ];
 
     const map = document.getElementById("map");
@@ -282,11 +296,29 @@
       svg.setAttribute("width", w);
       svg.setAttribute("height", h);
 
-      svg.innerHTML = edges.map((e) => {
+      const defs = `
+        <defs>
+          <marker id="arrow-parent" viewBox="0 0 10 10" refX="9" refY="5"
+            markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M 0 1.2 L 9 5 L 0 8.8 z" fill="#9bb89a" />
+          </marker>
+          <marker id="arrow-assoc" viewBox="0 0 10 10" refX="9" refY="5"
+            markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M 0 1.2 L 9 5 L 0 8.8 z" fill="#b0b0b4" />
+          </marker>
+        </defs>`;
+
+      const paths = edges.map((e) => {
         const from = port(nodeEls[e.from], "right");
         const to = port(nodeEls[e.to], "left");
-        return `<path d="${curve(from, to)}" />`;
+        // 终点略微左移，避免箭头埋进节点边框
+        to.x -= 1;
+        const cls = e.type === "assoc" ? "assoc" : "parent";
+        const marker = e.type === "assoc" ? "arrow-assoc" : "arrow-parent";
+        return `<path class="${cls}" d="${curve(from, to)}" marker-end="url(#${marker})" />`;
       }).join("");
+
+      svg.innerHTML = defs + paths;
     }
 
     function enableDrag(el, data) {
