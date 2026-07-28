@@ -50,9 +50,9 @@
       left: 0;
       top: 0;
       transform-origin: 0 0;
-      will-change: transform;
     }
 
+    /* —— 左上角筛选条 —— */
     .filter-bar {
       position: absolute;
       top: 16px;
@@ -245,6 +245,7 @@
       user-select: none;
       min-width: 168px;
       touch-action: none;
+      text-rendering: geometricPrecision;
     }
 
     .node.hidden { display: none; }
@@ -597,8 +598,22 @@
     const nodeEls = {};
     const ARROW_SIZE = 9;
 
+    function snapPan(v) {
+      // 对齐到设备像素，避免 100% 下文字发糊
+      const dpr = window.devicePixelRatio || 1;
+      return Math.round(v * dpr) / dpr;
+    }
+
     function applyViewTransform() {
-      stage.style.transform = `translate(${view.panX}px, ${view.panY}px) scale(${view.scale})`;
+      view.panX = snapPan(view.panX);
+      view.panY = snapPan(view.panY);
+      // scale=1 时不写 scale，减少合成层导致的字体模糊
+      if (Math.abs(view.scale - 1) < 0.0005) {
+        view.scale = 1;
+        stage.style.transform = `translate(${view.panX}px, ${view.panY}px)`;
+      } else {
+        stage.style.transform = `translate(${view.panX}px, ${view.panY}px) scale(${view.scale})`;
+      }
       zoomPctText.textContent = Math.round(view.scale * 100) + "%";
       zoomMenu.querySelectorAll(".filter-option").forEach((opt) => {
         const z = Number(opt.dataset.zoom);
@@ -922,6 +937,11 @@
         if (!dragging) return;
         dragging = false;
         el.classList.remove("dragging");
+        // 松手后对齐到整数像素，避免亚像素糊字
+        data.x = Math.round(data.x);
+        data.y = Math.round(data.y);
+        el.style.left = data.x + "px";
+        el.style.top = data.y + "px";
         try { el.releasePointerCapture(ev.pointerId); } catch (_) {}
         drawEdges();
       };
