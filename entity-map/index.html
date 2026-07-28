@@ -430,6 +430,95 @@
       line-height: 1;
       white-space: nowrap;
     }
+
+    /* —— 节点详情浮窗 —— */
+    .node-popover {
+      display: none;
+      position: absolute;
+      z-index: 50;
+      width: 320px;
+      max-height: min(420px, calc(100% - 48px));
+      background: #fff;
+      border: 1px solid #e6e6e8;
+      border-radius: 8px;
+      box-shadow: 0 8px 28px rgba(16, 16, 20, 0.14);
+      overflow: hidden;
+      font-size: 13px;
+      color: #2a2a2e;
+    }
+
+    .node-popover.open { display: flex; flex-direction: column; }
+
+    .node-popover-body {
+      overflow-y: auto;
+      padding: 14px 16px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .pop-row {
+      display: grid;
+      grid-template-columns: 108px 1fr;
+      gap: 10px;
+      align-items: start;
+    }
+
+    .pop-label {
+      color: #6b6b6f;
+      line-height: 22px;
+      white-space: nowrap;
+    }
+
+    .pop-value {
+      color: #1b1b1d;
+      line-height: 22px;
+      word-break: break-all;
+    }
+
+    .pop-value.muted { color: #9a9aa0; }
+
+    .pop-name {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--blue-title);
+      font-weight: 600;
+    }
+
+    .pop-name .icon {
+      width: 14px;
+      height: 14px;
+      color: var(--blue-icon);
+      flex-shrink: 0;
+    }
+
+    .pop-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .pop-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      max-width: 100%;
+      padding: 2px 8px 2px 5px;
+      background: #eef2ff;
+      border-radius: 4px;
+      color: var(--blue-title);
+      font-size: 12px;
+      font-weight: 600;
+      line-height: 18px;
+    }
+
+    .pop-tag .icon {
+      width: 12px;
+      height: 12px;
+      color: var(--blue-icon);
+      flex-shrink: 0;
+    }
   </style>
 </head>
 <body>
@@ -534,6 +623,10 @@
         <span>关联关系</span>
       </div>
     </div>
+
+    <div class="node-popover" id="node-popover" role="dialog" aria-label="节点详情">
+      <div class="node-popover-body" id="node-popover-body"></div>
+    </div>
   </div>
 
   <script>
@@ -548,13 +641,111 @@
     const ZOOM_PRESETS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 2];
 
     const nodes = [
-      { id: "root", label: "PDL1-WT01", sub: "", round: null, x: 80, y: 360, selected: true },
-      { id: "r1a", label: "CAND-PDL1-001", sub: "轮次/阶段：第一轮", round: "第一轮", x: 420, y: 140 },
-      { id: "r1b", label: "CAND-PDL1-002", sub: "轮次/阶段：第一轮", round: "第一轮", x: 420, y: 320 },
-      { id: "r1c", label: "CAND-PDL1-003", sub: "轮次/阶段：第一轮", round: "第一轮", x: 420, y: 500 },
-      { id: "r2a", label: "CAND-PDL1-004", sub: "轮次/阶段：第二轮", round: "第二轮", x: 780, y: 140 },
-      { id: "r2b", label: "CAND-PDL1-005", sub: "轮次/阶段：第二轮", round: "第二轮", x: 780, y: 320 },
-      { id: "r2c", label: "CAND-PDL1-006", sub: "轮次/阶段：第二轮", round: "第二轮", x: 780, y: 500 },
+      {
+        id: "root", label: "PDL1-WT01", sub: "", round: null, x: 80, y: 360, selected: true,
+        meta: {
+          objectType: "Antibody Complex",
+          serial: "PDL001-20260112-001",
+          project: "PDL1-01",
+          creator: "david",
+          createdAt: "2026-01-12 09:20:11",
+          antigen: "Antigen001",
+          isotype: "IgG",
+          ptm: "0.58",
+          proteolytic: "0.40",
+          mw: "144920.2",
+        },
+      },
+      {
+        id: "r1a", label: "CAND-PDL1-001", sub: "轮次/阶段：第一轮", round: "第一轮", x: 420, y: 140,
+        meta: {
+          objectType: "Antibody Complex",
+          serial: "PDL001-20260112-009",
+          project: "PDL1-01",
+          creator: "david",
+          createdAt: "2026-01-15 11:02:44",
+          antigen: "Antigen001",
+          isotype: "IgG",
+          ptm: "0.60",
+          proteolytic: "0.41",
+          mw: "145102.8",
+        },
+      },
+      {
+        id: "r1b", label: "CAND-PDL1-002", sub: "轮次/阶段：第一轮", round: "第一轮", x: 420, y: 320,
+        meta: {
+          objectType: "Antibody Complex",
+          serial: "PDL001-20260112-010",
+          project: "PDL1-01",
+          creator: "david",
+          createdAt: "2026-01-15 11:08:17",
+          antigen: "Antigen001",
+          isotype: "IgG",
+          ptm: "0.59",
+          proteolytic: "0.39",
+          mw: "145088.1",
+        },
+      },
+      {
+        id: "r1c", label: "CAND-PDL1-003", sub: "轮次/阶段：第一轮", round: "第一轮", x: 420, y: 500,
+        meta: {
+          objectType: "Antibody Complex",
+          serial: "PDL001-20260112-011",
+          project: "PDL1-01",
+          creator: "david",
+          createdAt: "2026-01-15 11:15:03",
+          antigen: "Antigen001",
+          isotype: "IgG",
+          ptm: "0.61",
+          proteolytic: "0.43",
+          mw: "145210.5",
+        },
+      },
+      {
+        id: "r2a", label: "CAND-PDL1-004", sub: "轮次/阶段：第二轮", round: "第二轮", x: 780, y: 140,
+        meta: {
+          objectType: "Antibody Complex",
+          serial: "PDL001-20260112-012",
+          project: "PDL1-01",
+          creator: "david",
+          createdAt: "2026-01-20 15:36:02",
+          antigen: "Antigen001",
+          isotype: "IgG",
+          ptm: "0.62",
+          proteolytic: "0.42",
+          mw: "145403.4",
+        },
+      },
+      {
+        id: "r2b", label: "CAND-PDL1-005", sub: "轮次/阶段：第二轮", round: "第二轮", x: 780, y: 320,
+        meta: {
+          objectType: "Antibody Complex",
+          serial: "PDL001-20260112-013",
+          project: "PDL1-01",
+          creator: "david",
+          createdAt: "2026-01-20 15:40:28",
+          antigen: "Antigen001",
+          isotype: "IgG",
+          ptm: "0.63",
+          proteolytic: "0.44",
+          mw: "145418.9",
+        },
+      },
+      {
+        id: "r2c", label: "CAND-PDL1-006", sub: "轮次/阶段：第二轮", round: "第二轮", x: 780, y: 500,
+        meta: {
+          objectType: "Antibody Complex",
+          serial: "PDL001-20260112-014",
+          project: "PDL1-01",
+          creator: "david",
+          createdAt: "2026-01-20 15:44:51",
+          antigen: "Antigen001",
+          isotype: "IgG",
+          ptm: "0.64",
+          proteolytic: "0.45",
+          mw: "145455.2",
+        },
+      },
     ];
 
     const edges = [
@@ -595,8 +786,12 @@
     const zoomPctBtn = document.getElementById("zoom-pct");
     const zoomPctText = document.getElementById("zoom-pct-text");
     const zoomMenu = document.getElementById("zoom-menu");
+    const popover = document.getElementById("node-popover");
+    const popoverBody = document.getElementById("node-popover-body");
     const nodeEls = {};
     const ARROW_SIZE = 9;
+    const CLICK_MOVE_THRESHOLD = 4;
+    let activePopoverNodeId = null;
 
     function snapPan(v) {
       // 对齐到设备像素，避免 100% 下文字发糊
@@ -607,7 +802,6 @@
     function applyViewTransform() {
       view.panX = snapPan(view.panX);
       view.panY = snapPan(view.panY);
-      // scale=1 时不写 scale，减少合成层导致的字体模糊
       if (Math.abs(view.scale - 1) < 0.0005) {
         view.scale = 1;
         stage.style.transform = `translate(${view.panX}px, ${view.panY}px)`;
@@ -619,6 +813,9 @@
         const z = Number(opt.dataset.zoom);
         opt.classList.toggle("active", Math.abs(z - view.scale) < 0.001);
       });
+      if (activePopoverNodeId && nodeEls[activePopoverNodeId]) {
+        positionPopover(nodeEls[activePopoverNodeId]);
+      }
     }
 
     function setZoom(next, anchorClientX, anchorClientY) {
@@ -902,6 +1099,7 @@
 
     function enableDrag(el, data) {
       let dragging = false;
+      let moved = false;
       let startX = 0;
       let startY = 0;
       let originX = 0;
@@ -910,6 +1108,7 @@
       const onPointerDown = (ev) => {
         if (ev.button !== undefined && ev.button !== 0) return;
         dragging = true;
+        moved = false;
         el.classList.add("dragging");
         el.setPointerCapture(ev.pointerId);
         startX = ev.clientX;
@@ -922,8 +1121,15 @@
 
       const onPointerMove = (ev) => {
         if (!dragging) return;
-        const dx = (ev.clientX - startX) / view.scale;
-        const dy = (ev.clientY - startY) / view.scale;
+        const screenDx = ev.clientX - startX;
+        const screenDy = ev.clientY - startY;
+        if (!moved && Math.hypot(screenDx, screenDy) > CLICK_MOVE_THRESHOLD) {
+          moved = true;
+          hidePopover();
+        }
+        if (!moved) return;
+        const dx = screenDx / view.scale;
+        const dy = screenDy / view.scale;
         data.x = originX + dx;
         data.y = originY + dy;
         el.style.left = data.x + "px";
@@ -935,13 +1141,17 @@
         if (!dragging) return;
         dragging = false;
         el.classList.remove("dragging");
-        // 松手后对齐到整数像素，避免亚像素糊字
         data.x = Math.round(data.x);
         data.y = Math.round(data.y);
         el.style.left = data.x + "px";
         el.style.top = data.y + "px";
         try { el.releasePointerCapture(ev.pointerId); } catch (_) {}
         drawEdges();
+
+        // 点击并释放（非拖拽）→ 打开浮窗
+        if (!moved) {
+          showPopover(data, el);
+        }
       };
 
       el.addEventListener("pointerdown", onPointerDown);
@@ -950,13 +1160,162 @@
       el.addEventListener("pointercancel", onPointerUp);
     }
 
+    function getNodeById(id) {
+      return nodes.find((n) => n.id === id);
+    }
+
+    function relatedNodes(nodeId, type, direction) {
+      return edges
+        .filter((e) => e.type === type && (direction === "in" ? e.to === nodeId : e.from === nodeId))
+        .map((e) => getNodeById(direction === "in" ? e.from : e.to))
+        .filter(Boolean);
+    }
+
+    function renderTag(label) {
+      return `<span class="pop-tag">${ICON_Y}<span>${label}</span></span>`;
+    }
+
+    function buildPopoverDetail(node) {
+      const meta = node.meta || {};
+      const parents = relatedNodes(node.id, "parent", "in");
+      const prevRound = relatedNodes(node.id, "assoc", "in");
+      const roundText = node.round || "—";
+
+      const parentsHtml = parents.length
+        ? `<div class="pop-tags">${parents.map((n) => renderTag(n.label)).join("")}</div>`
+        : `<span class="pop-value muted">—</span>`;
+
+      const prevHtml = prevRound.length
+        ? `<div class="pop-tags">${prevRound.map((n) => renderTag(n.label)).join("")}</div>`
+        : `<span class="pop-value muted">—</span>`;
+
+      const antigenHtml = meta.antigen
+        ? `<div class="pop-tags">${renderTag(meta.antigen)}</div>`
+        : `<span class="pop-value muted">—</span>`;
+
+      return `
+        <div class="pop-row">
+          <div class="pop-label">名称</div>
+          <div class="pop-value"><span class="pop-name">${ICON_Y}<span>${node.label}</span></span></div>
+        </div>
+        <div class="pop-row">
+          <div class="pop-label">对象类型</div>
+          <div class="pop-value">${meta.objectType || "—"}</div>
+        </div>
+        <div class="pop-row">
+          <div class="pop-label">编号</div>
+          <div class="pop-value">${meta.serial || "—"}</div>
+        </div>
+        <div class="pop-row">
+          <div class="pop-label">项目</div>
+          <div class="pop-value">${meta.project || "—"}</div>
+        </div>
+        <div class="pop-row">
+          <div class="pop-label">创建人</div>
+          <div class="pop-value">${meta.creator || "—"}</div>
+        </div>
+        <div class="pop-row">
+          <div class="pop-label">创建时间</div>
+          <div class="pop-value">${meta.createdAt || "—"}</div>
+        </div>
+        <div class="pop-row">
+          <div class="pop-label">抗原</div>
+          <div class="pop-value">${antigenHtml}</div>
+        </div>
+        <div class="pop-row">
+          <div class="pop-label">直接亲本</div>
+          <div class="pop-value">${parentsHtml}</div>
+        </div>
+        <div class="pop-row">
+          <div class="pop-label">上轮分子</div>
+          <div class="pop-value">${prevHtml}</div>
+        </div>
+        <div class="pop-row">
+          <div class="pop-label">轮次/阶段</div>
+          <div class="pop-value">${roundText}</div>
+        </div>
+        <div class="pop-row">
+          <div class="pop-label">Isotype</div>
+          <div class="pop-value">${meta.isotype || "—"}</div>
+        </div>
+        <div class="pop-row">
+          <div class="pop-label">PTM Liabilities</div>
+          <div class="pop-value">${meta.ptm || "—"}</div>
+        </div>
+        <div class="pop-row">
+          <div class="pop-label">Proteolytic Site Prediction</div>
+          <div class="pop-value">${meta.proteolytic || "—"}</div>
+        </div>
+        <div class="pop-row">
+          <div class="pop-label">MW(Da)</div>
+          <div class="pop-value">${meta.mw || "—"}</div>
+        </div>
+      `;
+    }
+
+    function positionPopover(nodeEl) {
+      const mapRect = map.getBoundingClientRect();
+      const nodeRect = nodeEl.getBoundingClientRect();
+      const popW = popover.offsetWidth || 320;
+      const popH = popover.offsetHeight || 360;
+      const gap = 12;
+
+      let left = nodeRect.right - mapRect.left + gap;
+      let top = nodeRect.top - mapRect.top;
+
+      if (left + popW > mapRect.width - 16) {
+        left = nodeRect.left - mapRect.left - popW - gap;
+      }
+      if (left < 16) left = 16;
+      if (top + popH > mapRect.height - 16) {
+        top = Math.max(16, mapRect.height - popH - 16);
+      }
+      if (top < 16) top = 16;
+
+      popover.style.left = Math.round(left) + "px";
+      popover.style.top = Math.round(top) + "px";
+    }
+
+    function showPopover(node, nodeEl) {
+      activePopoverNodeId = node.id;
+      popoverBody.innerHTML = buildPopoverDetail(node);
+      popover.classList.add("open");
+      // 先显示再量尺寸定位
+      requestAnimationFrame(() => positionPopover(nodeEl));
+    }
+
+    function hidePopover() {
+      activePopoverNodeId = null;
+      popover.classList.remove("open");
+    }
+
+    function setupPopoverDismiss() {
+      map.addEventListener("pointerdown", (ev) => {
+        if (!popover.classList.contains("open")) return;
+        if (ev.target.closest(".node-popover, .node")) return;
+        hidePopover();
+      });
+
+      // 缩放/平移后若仍打开，跟随当前节点重定位
+      const repositionIfOpen = () => {
+        if (!activePopoverNodeId) return;
+        const el = nodeEls[activePopoverNodeId];
+        if (el) positionPopover(el);
+      };
+      window.addEventListener("resize", () => {
+        drawEdges();
+        repositionIfOpen();
+      });
+    }
+
     function setupPan() {
       let panning = false;
       let sx = 0, sy = 0, ox = 0, oy = 0;
 
       map.addEventListener("pointerdown", (ev) => {
         if (ev.button !== 0) return;
-        if (ev.target.closest(".node, .filter-bar, .zoom-bar, .edge-legend, .filter-menu, .zoom-menu")) return;
+        if (ev.target.closest(".node, .filter-bar, .zoom-bar, .edge-legend, .filter-menu, .zoom-menu, .node-popover")) return;
+        hidePopover();
         panning = true;
         map.setPointerCapture(ev.pointerId);
         sx = ev.clientX;
@@ -988,6 +1347,7 @@
     setupFilters();
     setupZoomControls();
     setupPan();
+    setupPopoverDismiss();
 
     // 初始 100%，并把内容大致放到视野中
     requestAnimationFrame(() => {
@@ -996,7 +1356,6 @@
       applyViewTransform();
     });
 
-    window.addEventListener("resize", drawEdges);
     window.addEventListener("load", () => {
       drawEdges();
       centerView();
