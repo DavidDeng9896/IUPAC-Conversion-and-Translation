@@ -455,6 +455,25 @@
       display: flex;
       flex-direction: column;
       gap: 12px;
+      scrollbar-width: thin;
+      scrollbar-color: #d0d1d5 transparent;
+    }
+
+    .node-popover-body::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    .node-popover-body::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .node-popover-body::-webkit-scrollbar-thumb {
+      background: #d0d1d5;
+      border-radius: 4px;
+    }
+
+    .node-popover-body::-webkit-scrollbar-thumb:hover {
+      background: #b8b9be;
     }
 
     .pop-row {
@@ -907,7 +926,7 @@
       });
 
       map.addEventListener("wheel", (ev) => {
-        if (ev.target.closest(".filter-bar, .zoom-bar, .edge-legend")) return;
+        if (ev.target.closest(".filter-bar, .zoom-bar, .edge-legend, .node-popover")) return;
         ev.preventDefault();
         const delta = ev.deltaY > 0 ? -view.step : view.step;
         setZoom(view.scale + delta, ev.clientX, ev.clientY);
