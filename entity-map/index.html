@@ -11,7 +11,6 @@
     :root {
       --bg-canvas: #f7f7f9;
       --border-card: #d4d4d7;
-      --dot: #e5e6e8;
       --text-sub: #6b6b6d;
       --blue-title: #4a6ef8;
       --blue-selected: #7b92f0;
@@ -39,23 +38,21 @@
       height: 100%;
       overflow: hidden;
       background-color: var(--bg-canvas);
-      background-image: radial-gradient(circle, #d0d1d4 1.6px, transparent 1.8px);
-      background-size: 24px 24px;
-      background-position: 10px 6px;
+      background-image: radial-gradient(circle, #d5d6d9 1.05px, transparent 1.2px);
+      background-size: 22px 22px;
+      background-position: 8px 6px;
       touch-action: none;
     }
 
+    /* 世界坐标系容器：不设 100% 宽高，避免 SVG 与节点缩放不一致 */
     .stage {
       position: absolute;
       left: 0;
       top: 0;
-      width: 100%;
-      height: 100%;
       transform-origin: 0 0;
       will-change: transform;
     }
 
-    /* —— 左上角筛选条 —— */
     .filter-bar {
       position: absolute;
       top: 16px;
@@ -110,6 +107,7 @@
     }
 
     .filter-menu.open { display: block; }
+    .filter-menu.up { top: auto; bottom: calc(100% + 6px); }
 
     .filter-option {
       display: block;
@@ -208,9 +206,8 @@
 
     .edges {
       position: absolute;
-      inset: 0;
-      width: 100%;
-      height: 100%;
+      left: 0;
+      top: 0;
       pointer-events: none;
       overflow: visible;
       z-index: 5;
@@ -321,7 +318,7 @@
       z-index: 30;
     }
 
-    .zoom-group { display: flex; align-items: center; height: 100%; }
+    .zoom-group { display: flex; align-items: center; height: 100%; position: relative; }
 
     .zoom-btn {
       width: 34px;
@@ -340,13 +337,53 @@
     .zoom-btn:active { background: #ebebef; }
 
     .zoom-pct {
-      min-width: 42px;
-      text-align: center;
+      min-width: 52px;
+      height: 100%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+      border: none;
+      background: transparent;
       font-size: 13px;
       font-weight: 500;
+      font-family: inherit;
       color: #1b1b1d;
       font-variant-numeric: tabular-nums;
       user-select: none;
+      cursor: pointer;
+      padding: 0 4px;
+      border-radius: 4px;
+    }
+
+    .zoom-pct:hover { background: #f3f4f6; }
+
+    .zoom-pct svg {
+      width: 10px;
+      height: 10px;
+      color: #6b6b6f;
+    }
+
+    .zoom-menu {
+      display: none;
+      position: absolute;
+      left: 50%;
+      bottom: calc(100% + 8px);
+      transform: translateX(-50%);
+      min-width: 88px;
+      padding: 4px;
+      background: #fff;
+      border: 1px solid #e6e6e8;
+      border-radius: 8px;
+      box-shadow: 0 6px 18px rgba(16, 16, 20, 0.12);
+      z-index: 60;
+    }
+
+    .zoom-menu.open { display: block; }
+
+    .zoom-menu .filter-option {
+      text-align: center;
+      font-variant-numeric: tabular-nums;
     }
 
     .zoom-divider {
@@ -444,7 +481,21 @@
         <button class="zoom-btn" type="button" id="zoom-out" aria-label="缩小">
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M3 7h8"/></svg>
         </button>
-        <span class="zoom-pct" id="zoom-pct">61%</span>
+        <div class="zoom-group" style="position:relative">
+          <button class="zoom-pct" type="button" id="zoom-pct" aria-haspopup="listbox" aria-expanded="false">
+            <span id="zoom-pct-text">100%</span>
+            <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4.5L6 7.5L9 4.5"/></svg>
+          </button>
+          <div class="zoom-menu" id="zoom-menu" role="listbox">
+            <button class="filter-option" type="button" data-zoom="0.25">25%</button>
+            <button class="filter-option" type="button" data-zoom="0.5">50%</button>
+            <button class="filter-option" type="button" data-zoom="0.75">75%</button>
+            <button class="filter-option active" type="button" data-zoom="1">100%</button>
+            <button class="filter-option" type="button" data-zoom="1.25">125%</button>
+            <button class="filter-option" type="button" data-zoom="1.5">150%</button>
+            <button class="filter-option" type="button" data-zoom="2">200%</button>
+          </div>
+        </div>
         <button class="zoom-btn" type="button" id="zoom-in" aria-label="放大">
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M7 3v8M3 7h8"/></svg>
         </button>
@@ -493,7 +544,8 @@
         <path d="M5.3 12.2h3.4"/>
       </svg>`;
 
-    // 世界坐标（逻辑像素，缩放前）
+    const ZOOM_PRESETS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 2];
+
     const nodes = [
       { id: "root", label: "PDL1-WT01", sub: "", round: null, x: 80, y: 360, selected: true },
       { id: "r1a", label: "CAND-PDL1-001", sub: "轮次/阶段：第一轮", round: "第一轮", x: 420, y: 140 },
@@ -528,9 +580,9 @@
     };
 
     const view = {
-      scale: 0.61,
-      panX: 40,
-      panY: 40,
+      scale: 1,
+      panX: 0,
+      panY: 0,
       min: 0.25,
       max: 2,
       step: 0.1,
@@ -539,28 +591,27 @@
     const map = document.getElementById("map");
     const stage = document.getElementById("stage");
     const svg = document.getElementById("edges");
-    const zoomPctEl = document.getElementById("zoom-pct");
+    const zoomPctBtn = document.getElementById("zoom-pct");
+    const zoomPctText = document.getElementById("zoom-pct-text");
+    const zoomMenu = document.getElementById("zoom-menu");
     const nodeEls = {};
     const ARROW_SIZE = 9;
 
     function applyViewTransform() {
       stage.style.transform = `translate(${view.panX}px, ${view.panY}px) scale(${view.scale})`;
-      zoomPctEl.textContent = Math.round(view.scale * 100) + "%";
+      zoomPctText.textContent = Math.round(view.scale * 100) + "%";
+      zoomMenu.querySelectorAll(".filter-option").forEach((opt) => {
+        const z = Number(opt.dataset.zoom);
+        opt.classList.toggle("active", Math.abs(z - view.scale) < 0.001);
+      });
     }
 
     function setZoom(next, anchorClientX, anchorClientY) {
       const prev = view.scale;
       const scale = Math.min(view.max, Math.max(view.min, next));
-      if (scale === prev) {
-        zoomPctEl.textContent = Math.round(scale * 100) + "%";
-        return;
-      }
-
       const rect = map.getBoundingClientRect();
       const ax = (anchorClientX ?? rect.left + rect.width / 2) - rect.left;
       const ay = (anchorClientY ?? rect.top + rect.height / 2) - rect.top;
-
-      // 锚点下的世界坐标保持不变
       const worldX = (ax - view.panX) / prev;
       const worldY = (ay - view.panY) / prev;
       view.scale = scale;
@@ -577,8 +628,8 @@
         const el = nodeEls[n.id];
         if (!el) return;
         any = true;
-        const w = el.offsetWidth;
-        const h = el.offsetHeight;
+        const w = el.offsetWidth || 168;
+        const h = el.offsetHeight || 56;
         minX = Math.min(minX, n.x);
         minY = Math.min(minY, n.y);
         maxX = Math.max(maxX, n.x + w);
@@ -616,15 +667,33 @@
 
     function setupZoomControls() {
       document.getElementById("zoom-in").addEventListener("click", () => {
-        setZoom(view.scale + view.step);
+        // 优先跳到更高的常用倍数
+        const next = ZOOM_PRESETS.find((z) => z > view.scale + 0.001) ?? Math.min(view.max, view.scale + view.step);
+        setZoom(next);
       });
       document.getElementById("zoom-out").addEventListener("click", () => {
-        setZoom(view.scale - view.step);
+        const prevs = ZOOM_PRESETS.filter((z) => z < view.scale - 0.001);
+        const next = prevs.length ? prevs[prevs.length - 1] : Math.max(view.min, view.scale - view.step);
+        setZoom(next);
       });
       document.getElementById("zoom-fit").addEventListener("click", fitView);
       document.getElementById("zoom-center").addEventListener("click", centerView);
 
-      // 滚轮缩放（以鼠标位置为锚点）
+      zoomPctBtn.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        const open = zoomMenu.classList.toggle("open");
+        zoomPctBtn.setAttribute("aria-expanded", open ? "true" : "false");
+      });
+
+      zoomMenu.querySelectorAll(".filter-option").forEach((opt) => {
+        opt.addEventListener("click", (ev) => {
+          ev.stopPropagation();
+          setZoom(Number(opt.dataset.zoom));
+          zoomMenu.classList.remove("open");
+          zoomPctBtn.setAttribute("aria-expanded", "false");
+        });
+      });
+
       map.addEventListener("wheel", (ev) => {
         if (ev.target.closest(".filter-bar, .zoom-bar, .edge-legend")) return;
         ev.preventDefault();
@@ -667,7 +736,6 @@
     }
 
     function port(el, side) {
-      // stage 本地坐标（不受缩放影响）
       const y = el.offsetTop + el.offsetHeight / 2;
       const x = side === "right" ? el.offsetLeft + el.offsetWidth : el.offsetLeft;
       return { x, y };
@@ -699,14 +767,17 @@
     }
 
     function drawEdges() {
-      // stage 足够大，覆盖节点世界坐标范围
       const bounds = getContentBounds() || { minX: 0, minY: 0, maxX: 1200, maxY: 800 };
-      const pad = 400;
-      const w = Math.max(map.clientWidth / view.scale + 800, bounds.maxX + pad);
-      const h = Math.max(map.clientHeight / view.scale + 800, bounds.maxY + pad);
+      const pad = 200;
+      const w = Math.ceil(Math.max(bounds.maxX + pad, 1200));
+      const h = Math.ceil(Math.max(bounds.maxY + pad, 800));
+
+      // 关键：SVG 用户单位与 CSS 像素 1:1，与节点 left/top 同一坐标系
       svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
-      svg.setAttribute("width", w);
-      svg.setAttribute("height", h);
+      svg.setAttribute("width", String(w));
+      svg.setAttribute("height", String(h));
+      svg.style.width = w + "px";
+      svg.style.height = h + "px";
 
       const parts = [];
       edges.forEach((e) => {
@@ -767,12 +838,14 @@
         ev.stopPropagation();
         relationMenu.classList.toggle("open");
         roundMenu.classList.remove("open");
+        zoomMenu.classList.remove("open");
       });
 
       roundTrigger.addEventListener("click", (ev) => {
         ev.stopPropagation();
         roundMenu.classList.toggle("open");
         relationMenu.classList.remove("open");
+        zoomMenu.classList.remove("open");
       });
 
       relationMenu.querySelectorAll(".filter-option").forEach((opt) => {
@@ -799,9 +872,15 @@
       document.addEventListener("click", () => {
         relationMenu.classList.remove("open");
         roundMenu.classList.remove("open");
+        zoomMenu.classList.remove("open");
+        zoomPctBtn.setAttribute("aria-expanded", "false");
       });
 
       document.getElementById("filter-bar").addEventListener("click", (ev) => {
+        ev.stopPropagation();
+      });
+
+      document.querySelector(".zoom-bar").addEventListener("click", (ev) => {
         ev.stopPropagation();
       });
 
@@ -830,7 +909,6 @@
 
       const onPointerMove = (ev) => {
         if (!dragging) return;
-        // 屏幕位移换算成世界坐标位移
         const dx = (ev.clientX - startX) / view.scale;
         const dy = (ev.clientY - startY) / view.scale;
         data.x = originX + dx;
@@ -854,14 +932,13 @@
       el.addEventListener("pointercancel", onPointerUp);
     }
 
-    // 空白处拖动画布平移
     function setupPan() {
       let panning = false;
       let sx = 0, sy = 0, ox = 0, oy = 0;
 
       map.addEventListener("pointerdown", (ev) => {
         if (ev.button !== 0) return;
-        if (ev.target.closest(".node, .filter-bar, .zoom-bar, .edge-legend, .filter-menu")) return;
+        if (ev.target.closest(".node, .filter-bar, .zoom-bar, .edge-legend, .filter-menu, .zoom-menu")) return;
         panning = true;
         map.setPointerCapture(ev.pointerId);
         sx = ev.clientX;
@@ -893,15 +970,18 @@
     setupFilters();
     setupZoomControls();
     setupPan();
-    applyViewTransform();
-    window.addEventListener("resize", () => {
-      drawEdges();
-    });
-    window.addEventListener("load", () => {
-      drawEdges();
-    });
+
+    // 初始 100%，并把内容大致放到视野中
     requestAnimationFrame(() => {
       drawEdges();
+      centerView();
+      applyViewTransform();
+    });
+
+    window.addEventListener("resize", drawEdges);
+    window.addEventListener("load", () => {
+      drawEdges();
+      centerView();
     });
   </script>
 </body>
