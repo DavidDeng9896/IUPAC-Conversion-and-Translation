@@ -1465,18 +1465,28 @@
       const popW = popover.offsetWidth || 320;
       const popH = popover.offsetHeight || 360;
       const gap = 12;
+      const margin = 16;
 
-      let left = nodeRect.right - mapRect.left + gap;
-      let top = nodeRect.top - mapRect.top;
+      // 水平：相对节点左对齐，必要时夹紧到画布内
+      let left = nodeRect.left - mapRect.left;
+      if (left + popW > mapRect.width - margin) {
+        left = mapRect.width - popW - margin;
+      }
+      if (left < margin) left = margin;
 
-      if (left + popW > mapRect.width - 16) {
-        left = nodeRect.left - mapRect.left - popW - gap;
+      // 垂直：默认在节点下方；下方不够再放到上方
+      const belowTop = nodeRect.bottom - mapRect.top + gap;
+      const aboveTop = nodeRect.top - mapRect.top - popH - gap;
+      const spaceBelow = mapRect.height - (nodeRect.bottom - mapRect.top) - margin;
+      let top;
+      if (spaceBelow >= popH + gap) {
+        top = belowTop;
+      } else if (aboveTop >= margin) {
+        top = aboveTop;
+      } else {
+        // 上下都不够：尽量放下方并夹紧，浮窗自身可滚动
+        top = Math.min(belowTop, Math.max(margin, mapRect.height - popH - margin));
       }
-      if (left < 16) left = 16;
-      if (top + popH > mapRect.height - 16) {
-        top = Math.max(16, mapRect.height - popH - 16);
-      }
-      if (top < 16) top = 16;
 
       popover.style.left = Math.round(left) + "px";
       popover.style.top = Math.round(top) + "px";
