@@ -10,22 +10,14 @@
   <style>
     :root {
       --bg-canvas: #f7f7f9;
-      --bg-white: #ffffff;
-      --border: #e2e3e5;
       --border-card: #d4d4d7;
       --dot: #e5e6e8;
       --text-sub: #6b6b6d;
-      --blue: #486ffb;
       --blue-title: #4a6ef8;
-      --blue-share: #000db5;
       --blue-selected: #7b92f0;
       --blue-selected-bg: #f5f7ff;
       --blue-icon: #4b78f0;
       --chip: #e2e3e5;
-      --sidebar-w: 80px;
-      --tab-h: 54px;
-      --footer-h: 41px;
-      --top-h: 50px;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -39,107 +31,10 @@
       -webkit-font-smoothing: antialiased;
     }
 
-    .app {
-      display: grid;
-      grid-template-rows: var(--top-h) var(--tab-h) 1fr var(--footer-h);
-      grid-template-columns: 1fr var(--sidebar-w);
-      height: 100%;
-      width: 100%;
-      min-width: 800px;
-      background: var(--bg-canvas);
-    }
-
-    .top-spacer {
-      grid-column: 1 / -1;
-      background: var(--bg-canvas);
-      border-bottom: 1px solid #ebf0f1;
-    }
-
-    .tab-bar {
-      grid-column: 1 / -1;
-      display: flex;
-      align-items: stretch;
-      justify-content: space-between;
-      background: var(--bg-white);
-      border-bottom: 1px solid var(--border);
-      padding-left: 8px;
-      z-index: 5;
-    }
-
-    .tabs { display: flex; align-items: stretch; min-width: 0; overflow: hidden; }
-
-    .tab {
-      display: flex;
-      align-items: center;
-      padding: 0 13px;
-      font-size: 11.5px;
-      font-weight: 600;
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
-      color: #4a4a4e;
-      position: relative;
-      white-space: nowrap;
-      user-select: none;
-    }
-
-    .tab.active { color: var(--blue); }
-    .tab.active::after {
-      content: "";
-      position: absolute;
-      left: 12px;
-      right: 12px;
-      bottom: -1px;
-      height: 2px;
-      background: var(--blue);
-    }
-
-    .tab-more {
-      display: flex;
-      align-items: center;
-      padding: 0 10px 0 6px;
-      color: #8b8b8f;
-    }
-
-    .tab-actions {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding-right: 16px;
-      flex-shrink: 0;
-    }
-
-    .btn-share {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      height: 36px;
-      padding: 0 14px 0 12px;
-      background: var(--blue-share);
-      color: #fff;
-      border: none;
-      border-radius: 6px;
-      font-size: 14px;
-      font-weight: 600;
-      font-family: inherit;
-      cursor: default;
-    }
-
-    .btn-copy {
-      width: 36px;
-      height: 36px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      background: #fff;
-      border: 2px solid #000db5;
-      border-radius: 6px;
-      color: #000db5;
-      cursor: default;
-      padding: 0;
-    }
-
     .map {
       position: relative;
+      width: 100%;
+      height: 100%;
       overflow: hidden;
       background-color: var(--bg-canvas);
       background-image: radial-gradient(circle, var(--dot) 1.15px, transparent 1.25px);
@@ -282,160 +177,38 @@
       background: #e6e6e8;
       margin: 0 2px;
     }
-
-    .rail {
-      position: relative;
-      background: var(--bg-white);
-      border-left: 1px solid var(--border);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding-top: 16px;
-    }
-
-    .info-btn {
-      width: 20px;
-      height: 20px;
-      border-radius: 50%;
-      background: #4a4a4e;
-      color: #fff;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 11px;
-      font-weight: 700;
-      font-style: italic;
-      font-family: Georgia, "Times New Roman", serif;
-      line-height: 1;
-      user-select: none;
-    }
-
-    .chat-btn {
-      position: absolute;
-      bottom: 24px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 48px;
-      height: 48px;
-      border-radius: 50%;
-      background: var(--blue-share);
-      border: none;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: default;
-      box-shadow: 0 2px 10px rgba(0, 13, 181, 0.32);
-      padding: 0;
-      z-index: 12;
-    }
-
-    .footer {
-      grid-column: 1 / -1;
-      background: linear-gradient(#dcdce0, #d0d0d4);
-      border-top: 1px solid #bdc3c7;
-      display: flex;
-      align-items: stretch;
-      justify-content: flex-end;
-      z-index: 6;
-    }
-
-    .split-tab {
-      display: flex;
-      align-items: center;
-      padding: 0 18px;
-      font-size: 11px;
-      font-weight: 700;
-      letter-spacing: 0.06em;
-      color: #1a1a1c;
-      background: linear-gradient(#e8e8eb, #d6d6da);
-      border-left: 1px solid #c4c4c8;
-      box-shadow: -1px 0 2px rgba(0, 0, 0, 0.05);
-      user-select: none;
-    }
   </style>
 </head>
 <body>
-  <div class="app">
-    <div class="top-spacer"></div>
+  <div class="map" id="map">
+    <svg class="edges" id="edges" xmlns="http://www.w3.org/2000/svg"></svg>
 
-    <header class="tab-bar">
-      <nav class="tabs">
-        <div class="tab active">Entity Map</div>
-        <div class="tab">Relevant Items</div>
-        <div class="tab">Description</div>
-        <div class="tab">Results</div>
-        <div class="tab">Inventory</div>
-        <div class="tab-more" aria-label="More">
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-            <circle cx="3" cy="8" r="1.35"/>
-            <circle cx="8" cy="8" r="1.35"/>
-            <circle cx="13" cy="8" r="1.35"/>
-          </svg>
-        </div>
-      </nav>
-      <div class="tab-actions">
-        <button class="btn-share" type="button">
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M6 3H3.5A1.5 1.5 0 0 0 2 4.5v6A1.5 1.5 0 0 0 3.5 12h6A1.5 1.5 0 0 0 11 10.5V8"/>
-            <path d="M8 2h4v4"/>
-            <path d="M7 7l5-5"/>
-          </svg>
-          Share
+    <div class="zoom-bar">
+      <div class="zoom-group">
+        <button class="zoom-btn" type="button" aria-label="Zoom out">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M3 7h8"/></svg>
         </button>
-        <button class="btn-copy" type="button" aria-label="Duplicate">
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-            <rect x="2" y="2" width="9" height="9" rx="1.5" stroke="#000db5" stroke-width="1.5"/>
-            <rect x="5" y="5" width="9" height="9" rx="1.5" fill="#fff" stroke="#000db5" stroke-width="1.5"/>
-          </svg>
+        <span class="zoom-pct">61%</span>
+        <button class="zoom-btn" type="button" aria-label="Zoom in">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M7 3v8M3 7h8"/></svg>
         </button>
       </div>
-    </header>
-
-    <div class="map" id="map">
-      <svg class="edges" id="edges" xmlns="http://www.w3.org/2000/svg"></svg>
-
-      <!-- 节点由 JS 根据数据渲染 -->
-      <div class="zoom-bar">
-        <div class="zoom-group">
-          <button class="zoom-btn" type="button" aria-label="Zoom out">
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M3 7h8"/></svg>
-          </button>
-          <span class="zoom-pct">61%</span>
-          <button class="zoom-btn" type="button" aria-label="Zoom in">
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M7 3v8M3 7h8"/></svg>
-          </button>
-        </div>
-        <div class="zoom-divider"></div>
-        <div class="zoom-group">
-          <button class="zoom-btn" type="button" aria-label="Fit">
-            <svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M2 5.5V2h3.5M13 5.5V2H9.5M2 9.5V13h3.5M13 9.5V13H9.5"/>
-            </svg>
-          </button>
-          <button class="zoom-btn" type="button" aria-label="Recenter">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round">
-              <circle cx="8" cy="8" r="3.4"/>
-              <circle cx="8" cy="8" r="1" fill="currentColor" stroke="none"/>
-              <path d="M8 1.25v2M8 12.75v2M1.25 8h2M12.75 8h2"/>
-            </svg>
-          </button>
-        </div>
+      <div class="zoom-divider"></div>
+      <div class="zoom-group">
+        <button class="zoom-btn" type="button" aria-label="Fit">
+          <svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M2 5.5V2h3.5M13 5.5V2H9.5M2 9.5V13h3.5M13 9.5V13H9.5"/>
+          </svg>
+        </button>
+        <button class="zoom-btn" type="button" aria-label="Recenter">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round">
+            <circle cx="8" cy="8" r="3.4"/>
+            <circle cx="8" cy="8" r="1" fill="currentColor" stroke="none"/>
+            <path d="M8 1.25v2M8 12.75v2M1.25 8h2M12.75 8h2"/>
+          </svg>
+        </button>
       </div>
     </div>
-
-    <aside class="rail">
-      <div class="info-btn">i</div>
-      <button class="chat-btn" type="button" aria-label="Help">
-        <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-          <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3h9A2.5 2.5 0 0 1 18 5.5v7A2.5 2.5 0 0 1 15.5 15H9.2L5.4 18.2c-.5.4-1.2.1-1.2-.5V5.5z" fill="#fff"/>
-          <path d="M7.2 7.3h7.6M7.2 10.1h5.2" stroke="#000db5" stroke-width="1.5" stroke-linecap="round"/>
-        </svg>
-      </button>
-    </aside>
-
-    <footer class="footer">
-      <div class="split-tab">SPLIT WORKSPACE</div>
-    </footer>
   </div>
 
   <script>
@@ -447,11 +220,6 @@
         <path d="M5.3 12.2h3.4"/>
       </svg>`;
 
-    // 数据与关系按截图：
-    // PDL1-WT01 → 三个「第一轮」候选 + 直接连到右侧中间「第二轮」
-    // CAND-PDL1-001(第一轮) → CAND-PDL1-001(第二轮) 上
-    // CAND-PDL1-002(第一轮) → CAND-PDL1-002(第二轮) 下
-    // 底部第一轮节点无出边
     const nodes = [
       { id: "root", label: "PDL1-WT01", sub: "", xPct: 6, yPct: 48, selected: true },
       { id: "r1a", label: "CAND-PDL1-001", sub: "轮次/阶段：第一轮", xPct: 38, yPct: 18 },
@@ -533,12 +301,10 @@
         dragging = true;
         el.classList.add("dragging");
         el.setPointerCapture(ev.pointerId);
-        const mr = map.getBoundingClientRect();
         startX = ev.clientX;
         startY = ev.clientY;
         originLeft = el.offsetLeft;
         originTop = el.offsetTop;
-        // 切到 px 定位，拖动更稳
         el.style.left = originLeft + "px";
         el.style.top = originTop + "px";
         ev.preventDefault();
