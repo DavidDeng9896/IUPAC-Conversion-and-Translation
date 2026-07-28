@@ -44,6 +44,16 @@
       touch-action: none;
     }
 
+    .map:fullscreen,
+    .map:-webkit-full-screen {
+      width: 100vw;
+      height: 100vh;
+      background-color: var(--bg-canvas);
+      background-image: radial-gradient(circle, #d5d6d9 1.05px, transparent 1.2px);
+      background-size: 22px 22px;
+      background-position: 8px 6px;
+    }
+
     /* 世界坐标系容器：不设 100% 宽高，避免 SVG 与节点缩放不一致 */
     .stage {
       position: absolute;
@@ -336,6 +346,8 @@
 
     .zoom-btn:hover { background: #f3f4f6; }
     .zoom-btn:active { background: #ebebef; }
+
+    .zoom-btn .fs-icon[hidden] { display: none; }
 
     .zoom-pct {
       min-width: 52px;
@@ -649,9 +661,12 @@
       </div>
       <div class="zoom-divider"></div>
       <div class="zoom-group">
-        <button class="zoom-btn" type="button" id="zoom-fit" aria-label="定位到选中节点并100%显示" title="定位到选中节点 · 100%">
-          <svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <button class="zoom-btn" type="button" id="zoom-fullscreen" aria-label="全屏" title="全屏">
+          <svg class="fs-icon fs-enter" width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M2 5.5V2h3.5M13 5.5V2H9.5M2 9.5V13h3.5M13 9.5V13H9.5"/>
+          </svg>
+          <svg class="fs-icon fs-exit" width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" hidden>
+            <path d="M5.5 2.5v3H2.5M9.5 2.5v3h3M5.5 12.5v-3H2.5M9.5 12.5v-3h3"/>
           </svg>
         </button>
         <button class="zoom-btn" type="button" id="zoom-center" aria-label="定位到选中节点并100%显示" title="定位到选中节点 · 100%">
@@ -974,6 +989,39 @@
       });
     }
 
+    function isMapFullscreen() {
+      const fsEl = document.fullscreenElement || document.webkitFullscreenElement;
+      return fsEl === map;
+    }
+
+    function updateFullscreenButton() {
+      const btn = document.getElementById("zoom-fullscreen");
+      if (!btn) return;
+      const on = isMapFullscreen();
+      const enterIcon = btn.querySelector(".fs-enter");
+      const exitIcon = btn.querySelector(".fs-exit");
+      if (enterIcon) enterIcon.hidden = on;
+      if (exitIcon) exitIcon.hidden = !on;
+      btn.setAttribute("aria-label", on ? "退出全屏" : "全屏");
+      btn.setAttribute("title", on ? "退出全屏" : "全屏");
+      btn.setAttribute("aria-pressed", on ? "true" : "false");
+    }
+
+    async function toggleMapFullscreen() {
+      try {
+        if (isMapFullscreen()) {
+          if (document.exitFullscreen) await document.exitFullscreen();
+          else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+        } else {
+          if (map.requestFullscreen) await map.requestFullscreen();
+          else if (map.webkitRequestFullscreen) map.webkitRequestFullscreen();
+        }
+      } catch (_) {
+        /* 用户手势被拒绝或浏览器不支持时静默忽略 */
+      }
+      updateFullscreenButton();
+    }
+
     function setupZoomControls() {
       document.getElementById("zoom-in").addEventListener("click", () => {
         // 优先跳到更高的常用倍数
@@ -985,8 +1033,19 @@
         const next = prevs.length ? prevs[prevs.length - 1] : Math.max(view.min, view.scale - view.step);
         setZoom(next);
       });
-      document.getElementById("zoom-fit").addEventListener("click", focusSelectedAt100);
+      document.getElementById("zoom-fullscreen").addEventListener("click", toggleMapFullscreen);
       document.getElementById("zoom-center").addEventListener("click", focusSelectedAt100);
+      document.addEventListener("fullscreenchange", () => {
+        updateFullscreenButton();
+        requestAnimationFrame(() => {
+          applyViewTransform();
+          if (activePopoverNodeId && nodeEls[activePopoverNodeId]) {
+            positionPopover(nodeEls[activePopoverNodeId]);
+          }
+        });
+      });
+      document.addEventListener("webkitfullscreenchange", updateFullscreenButton);
+      updateFullscreenButton();
 
       zoomPctBtn.addEventListener("click", (ev) => {
         ev.stopPropagation();
