@@ -420,7 +420,7 @@
     }
 
     .legend-line {
-      width: 22px;
+      width: 18px;
       height: 2px;
       display: block;
       flex-shrink: 0;
@@ -436,6 +436,18 @@
       );
     }
 
+    .legend-end {
+      display: inline-flex;
+      align-items: center;
+      flex-shrink: 0;
+      margin-left: 6px;
+    }
+
+    .legend-end .legend-line {
+      width: 14px;
+      border-radius: 1px 0 0 1px;
+    }
+
     .legend-arrow {
       width: 0;
       height: 0;
@@ -443,12 +455,12 @@
       border-bottom: 4px solid transparent;
       border-left: 6px solid #C4D1C2;
       flex-shrink: 0;
-      margin-left: 8px;
+      margin-left: -1px;
     }
 
     .legend-arrow.assoc { border-left-color: #CED2D9; }
 
-    .legend-item span {
+    .legend-item > span:not([class]) {
       font-size: 12px;
       color: #5a5a5e;
       line-height: 1;
@@ -656,12 +668,18 @@
       <div class="legend-item">
         <span class="legend-line parent" aria-hidden="true"></span>
         <span>父子关系</span>
-        <span class="legend-arrow" aria-hidden="true"></span>
+        <span class="legend-end" aria-hidden="true">
+          <span class="legend-line parent"></span>
+          <span class="legend-arrow"></span>
+        </span>
       </div>
       <div class="legend-item">
         <span class="legend-line assoc" aria-hidden="true"></span>
         <span>关联关系</span>
-        <span class="legend-arrow assoc" aria-hidden="true"></span>
+        <span class="legend-end" aria-hidden="true">
+          <span class="legend-line assoc"></span>
+          <span class="legend-arrow assoc"></span>
+        </span>
       </div>
     </div>
 
