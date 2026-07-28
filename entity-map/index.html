@@ -400,29 +400,52 @@
       bottom: 26px;
       z-index: 30;
       display: flex;
-      align-items: stretch;
-      gap: 28px;
-      padding: 14px 22px 12px;
+      align-items: center;
+      height: 40px;
+      gap: 22px;
+      padding: 0 16px;
       background: #fff;
-      border: 1px solid #e6e6e8;
-      border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(16, 16, 20, 0.08);
+      border: 1px solid #e4e4e6;
+      border-radius: 6px;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
       user-select: none;
+      box-sizing: border-box;
     }
 
     .legend-item {
       display: flex;
-      flex-direction: column;
+      flex-direction: row;
       align-items: center;
       gap: 8px;
-      min-width: 72px;
     }
 
     .legend-line {
-      width: 56px;
-      height: 14px;
+      width: 22px;
+      height: 2px;
       display: block;
+      flex-shrink: 0;
+      border-radius: 1px;
     }
+
+    .legend-line.parent { background: #C4D1C2; }
+    .legend-line.assoc {
+      background: repeating-linear-gradient(
+        to right,
+        #CED2D9 0 4px,
+        transparent 4px 7px
+      );
+    }
+
+    .legend-arrow {
+      width: 0;
+      height: 0;
+      border-top: 4px solid transparent;
+      border-bottom: 4px solid transparent;
+      border-left: 6px solid #C4D1C2;
+      flex-shrink: 0;
+    }
+
+    .legend-arrow.assoc { border-left-color: #CED2D9; }
 
     .legend-item span {
       font-size: 12px;
@@ -630,18 +653,14 @@
 
     <div class="edge-legend" aria-label="连线示意图">
       <div class="legend-item">
-        <svg class="legend-line" viewBox="0 0 56 14" aria-hidden="true">
-          <line x1="2" y1="7" x2="42" y2="7" stroke="#C4D1C2" stroke-width="2" stroke-linecap="round"/>
-          <path d="M40 2.5 L52 7 L40 11.5 Z" fill="#C4D1C2"/>
-        </svg>
+        <span class="legend-line parent" aria-hidden="true"></span>
         <span>父子关系</span>
+        <span class="legend-arrow" aria-hidden="true"></span>
       </div>
       <div class="legend-item">
-        <svg class="legend-line" viewBox="0 0 56 14" aria-hidden="true">
-          <line x1="2" y1="7" x2="42" y2="7" stroke="#CED2D9" stroke-width="2" stroke-linecap="round" stroke-dasharray="4 3"/>
-          <path d="M40 2.5 L52 7 L40 11.5 Z" fill="#CED2D9"/>
-        </svg>
+        <span class="legend-line assoc" aria-hidden="true"></span>
         <span>关联关系</span>
+        <span class="legend-arrow assoc" aria-hidden="true"></span>
       </div>
     </div>
 
