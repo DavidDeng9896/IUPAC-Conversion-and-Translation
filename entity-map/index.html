@@ -22,8 +22,6 @@
       --blue-selected-bg: #f5f7ff;
       --blue-icon: #4b78f0;
       --chip: #e2e3e5;
-      --edge: #7cbc6e;
-      --edge-muted: #b0b0b4;
       --sidebar-w: 80px;
       --tab-h: 54px;
       --footer-h: 41px;
@@ -162,17 +160,9 @@
 
     .edges path {
       fill: none;
-      stroke: var(--edge);
-      stroke-width: 1.75;
+      stroke: #c8c8cc;
+      stroke-width: 1.2;
     }
-
-    .edges path.dashed {
-      stroke: var(--edge-muted);
-      stroke-dasharray: 5 4;
-      stroke-width: 1.5;
-    }
-
-    .edges marker path { fill: var(--edge); stroke: none; }
 
     .node {
       position: absolute;
@@ -402,13 +392,7 @@
     </header>
 
     <div class="map" id="map">
-      <svg class="edges" id="edges" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-          <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-            <path d="M 0 1.2 L 9 5 L 0 8.8 z" />
-          </marker>
-        </defs>
-      </svg>
+      <svg class="edges" id="edges" xmlns="http://www.w3.org/2000/svg"></svg>
 
       <!-- 节点由 JS 根据数据渲染 -->
       <div class="zoom-bar">
@@ -479,12 +463,12 @@
     ];
 
     const edges = [
-      { from: "root", to: "r1a", style: "solid" },
-      { from: "root", to: "r1b", style: "solid" },
-      { from: "root", to: "r1c", style: "solid" },
-      { from: "root", to: "r2b", style: "solid" },
-      { from: "r1a", to: "r2a", style: "dashed" },
-      { from: "r1b", to: "r2c", style: "dashed" },
+      { from: "root", to: "r1a" },
+      { from: "root", to: "r1b" },
+      { from: "root", to: "r1c" },
+      { from: "root", to: "r2b" },
+      { from: "r1a", to: "r2a" },
+      { from: "r1b", to: "r2c" },
     ];
 
     const map = document.getElementById("map");
@@ -518,10 +502,9 @@
         : { x: r.left - mr.left, y };
     }
 
-    // 正交折线（贴近截图的直角走线）
-    function orthoPath(a, b) {
-      const midX = a.x + Math.max(40, (b.x - a.x) * 0.5);
-      return `M ${a.x} ${a.y} L ${midX} ${a.y} L ${midX} ${b.y} L ${b.x} ${b.y}`;
+    function curve(a, b) {
+      const dx = Math.max(48, (b.x - a.x) * 0.48);
+      return `M ${a.x} ${a.y} C ${a.x + dx} ${a.y}, ${b.x - dx} ${b.y}, ${b.x} ${b.y}`;
     }
 
     function drawEdges() {
@@ -531,30 +514,11 @@
       svg.setAttribute("width", w);
       svg.setAttribute("height", h);
 
-      // 保留 marker defs
-      let defs = svg.querySelector("defs");
-      if (!defs) {
-        defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
-        defs.innerHTML = `
-          <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-            <path d="M 0 1.2 L 9 5 L 0 8.8 z" />
-          </marker>`;
-        svg.appendChild(defs);
-      }
-
-      [...svg.querySelectorAll("path.edge")].forEach((p) => p.remove());
-
-      edges.forEach((e) => {
+      svg.innerHTML = edges.map((e) => {
         const from = port(nodeEls[e.from], "right");
         const to = port(nodeEls[e.to], "left");
-        // 终点略微左移，给箭头留空
-        to.x -= 2;
-        const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-        path.setAttribute("d", orthoPath(from, to));
-        path.setAttribute("class", "edge" + (e.style === "dashed" ? " dashed" : ""));
-        path.setAttribute("marker-end", "url(#arrow)");
-        svg.appendChild(path);
-      });
+        return `<path d="${curve(from, to)}" />`;
+      }).join("");
     }
 
     function enableDrag(el, data) {
