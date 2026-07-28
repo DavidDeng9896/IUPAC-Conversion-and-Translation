@@ -184,21 +184,24 @@
       height: 100%;
       pointer-events: none;
       overflow: visible;
-      z-index: 1;
+      z-index: 5;
     }
 
-    .edges path {
+    .edges path.line {
       fill: none;
       stroke-width: 1.6;
       stroke-linecap: round;
     }
 
-    .edges path.parent { stroke: var(--edge-parent); }
-    .edges path.assoc {
+    .edges path.line.parent { stroke: var(--edge-parent); }
+    .edges path.line.assoc {
       stroke: var(--edge-assoc);
       stroke-dasharray: 5 4;
       stroke-width: 1.5;
     }
+
+    .edges path.arrow.parent { fill: var(--edge-parent); stroke: none; }
+    .edges path.arrow.assoc { fill: var(--edge-assoc); stroke: none; }
 
     .node {
       position: absolute;
@@ -482,7 +485,7 @@
     const map = document.getElementById("map");
     const svg = document.getElementById("edges");
     const nodeEls = {};
-    const ARROW_GAP = 10;
+    const ARROW_SIZE = 9;
 
     function renderNodes() {
       nodes.forEach((n) => {
@@ -503,7 +506,7 @@
     }
 
     function isNodeVisible(n) {
-      if (!n.round) return true; // root 始终可见（只要有任一子节点可见时由边逻辑处理；这里保持可见）
+      if (!n.round) return true;
       return filters.rounds.has(n.round);
     }
 
@@ -531,15 +534,26 @@
       return `M ${a.x} ${a.y} C ${a.x + dx} ${a.y}, ${b.x - dx} ${b.y}, ${b.x} ${b.y}`;
     }
 
-    /** 终点沿方向回退，让箭头露在节点外侧 */
-    function shortenEnd(a, b, gap) {
-      const dx = b.x - a.x;
-      const dy = b.y - a.y;
+    /** 沿 a→b 方向，从 tip 回退 length 得到点 */
+    function alongBack(a, tip, length) {
+      const dx = tip.x - a.x;
+      const dy = tip.y - a.y;
       const len = Math.hypot(dx, dy) || 1;
       return {
-        x: b.x - (dx / len) * gap,
-        y: b.y - (dy / len) * gap,
+        x: tip.x - (dx / len) * length,
+        y: tip.y - (dy / len) * length,
       };
+    }
+
+    /** 箭头：尖端在 tip（贴节点左边），底边朝来源方向 */
+    function arrowPath(a, tip, size) {
+      const base = alongBack(a, tip, size);
+      const dx = tip.x - a.x;
+      const dy = tip.y - a.y;
+      const len = Math.hypot(dx, dy) || 1;
+      const px = (-dy / len) * size * 0.55;
+      const py = (dx / len) * size * 0.55;
+      return `M ${tip.x} ${tip.y} L ${base.x + px} ${base.y + py} L ${base.x - px} ${base.y - py} Z`;
     }
 
     function drawEdges() {
@@ -549,40 +563,29 @@
       svg.setAttribute("width", w);
       svg.setAttribute("height", h);
 
-      const defs = `
-        <defs>
-          <marker id="arrow-parent" markerUnits="userSpaceOnUse"
-            viewBox="0 0 12 12" refX="11" refY="6"
-            markerWidth="12" markerHeight="12" orient="auto">
-            <path d="M 1 1.5 L 11 6 L 1 10.5 z" fill="#C4D1C2" />
-          </marker>
-          <marker id="arrow-assoc" markerUnits="userSpaceOnUse"
-            viewBox="0 0 12 12" refX="11" refY="6"
-            markerWidth="12" markerHeight="12" orient="auto">
-            <path d="M 1 1.5 L 11 6 L 1 10.5 z" fill="#CED2D9" />
-          </marker>
-        </defs>`;
+      const parts = [];
 
-      const paths = edges.map((e) => {
-        if (filters.relation !== "all" && e.type !== filters.relation) return "";
+      edges.forEach((e) => {
+        if (filters.relation !== "all" && e.type !== filters.relation) return;
 
         const fromNode = nodes.find((n) => n.id === e.from);
         const toNode = nodes.find((n) => n.id === e.to);
-        if (!isNodeVisible(fromNode) || !isNodeVisible(toNode)) return "";
+        if (!isNodeVisible(fromNode) || !isNodeVisible(toNode)) return;
 
         const fromEl = nodeEls[e.from];
         const toEl = nodeEls[e.to];
-        if (!fromEl || !toEl || fromEl.classList.contains("hidden") || toEl.classList.contains("hidden")) return "";
+        if (!fromEl || !toEl || fromEl.classList.contains("hidden") || toEl.classList.contains("hidden")) return;
 
         const from = port(fromEl, "right");
-        const rawTo = port(toEl, "left");
-        const to = shortenEnd(from, rawTo, ARROW_GAP);
+        const tip = port(toEl, "left"); // 箭头尖端贴目标节点左缘中点
+        const lineEnd = alongBack(from, tip, ARROW_SIZE - 1); // 线段止于箭头底边，避免叠线
         const cls = e.type === "assoc" ? "assoc" : "parent";
-        const marker = e.type === "assoc" ? "arrow-assoc" : "arrow-parent";
-        return `<path class="${cls}" d="${curve(from, to)}" marker-end="url(#${marker})" />`;
-      }).join("");
 
-      svg.innerHTML = defs + paths;
+        parts.push(`<path class="line ${cls}" d="${curve(from, lineEnd)}" />`);
+        parts.push(`<path class="arrow ${cls}" d="${arrowPath(from, tip, ARROW_SIZE)}" />`);
+      });
+
+      svg.innerHTML = parts.join("");
     }
 
     function renderRoundTags() {
