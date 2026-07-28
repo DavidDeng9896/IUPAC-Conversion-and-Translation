@@ -210,7 +210,7 @@
       top: 0;
       pointer-events: none;
       overflow: visible;
-      z-index: 5;
+      z-index: 1;
     }
 
     .edges path.line {
@@ -761,24 +761,10 @@
       return `M ${a.x} ${a.y} C ${a.x + dx} ${a.y}, ${b.x - dx} ${b.y}, ${b.x} ${b.y}`;
     }
 
-    function alongBack(a, tip, length) {
-      const dx = tip.x - a.x;
-      const dy = tip.y - a.y;
-      const len = Math.hypot(dx, dy) || 1;
-      return {
-        x: tip.x - (dx / len) * length,
-        y: tip.y - (dy / len) * length,
-      };
-    }
-
-    function arrowPath(a, tip, size) {
-      const base = alongBack(a, tip, size);
-      const dx = tip.x - a.x;
-      const dy = tip.y - a.y;
-      const len = Math.hypot(dx, dy) || 1;
-      const px = (-dy / len) * size * 0.55;
-      const py = (dx / len) * size * 0.55;
-      return `M ${tip.x} ${tip.y} L ${base.x + px} ${base.y + py} L ${base.x - px} ${base.y - py} Z`;
+    function horizontalArrow(tipX, tipY, size) {
+      const baseX = tipX - size;
+      const h = size * 0.55;
+      return `M ${tipX} ${tipY} L ${baseX} ${tipY - h} L ${baseX} ${tipY + h} Z`;
     }
 
     function drawEdges() {
@@ -787,7 +773,6 @@
       const w = Math.ceil(Math.max(bounds.maxX + pad, 1200));
       const h = Math.ceil(Math.max(bounds.maxY + pad, 800));
 
-      // 关键：SVG 用户单位与 CSS 像素 1:1，与节点 left/top 同一坐标系
       svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
       svg.setAttribute("width", String(w));
       svg.setAttribute("height", String(h));
@@ -795,6 +780,9 @@
       svg.style.height = h + "px";
 
       const parts = [];
+      // 每个目标节点只保留一个水平箭头
+      const arrowByTarget = new Map();
+
       edges.forEach((e) => {
         if (filters.relation !== "all" && e.type !== filters.relation) return;
 
@@ -808,11 +796,21 @@
 
         const from = port(fromEl, "right");
         const tip = port(toEl, "left");
-        const lineEnd = alongBack(from, tip, ARROW_SIZE - 1);
+        // 线段止于箭头底边，不进入节点；终点水平对齐端口
+        const lineEnd = { x: tip.x - ARROW_SIZE, y: tip.y };
         const cls = e.type === "assoc" ? "assoc" : "parent";
 
         parts.push(`<path class="line ${cls}" d="${curve(from, lineEnd)}" />`);
-        parts.push(`<path class="arrow ${cls}" d="${arrowPath(from, tip, ARROW_SIZE)}" />`);
+
+        const prev = arrowByTarget.get(e.to);
+        if (!prev || (prev.type === "assoc" && e.type === "parent")) {
+          arrowByTarget.set(e.to, { tip, type: e.type });
+        }
+      });
+
+      arrowByTarget.forEach(({ tip, type }) => {
+        const cls = type === "assoc" ? "assoc" : "parent";
+        parts.push(`<path class="arrow ${cls}" d="${horizontalArrow(tip.x, tip.y, ARROW_SIZE)}" />`);
       });
 
       svg.innerHTML = parts.join("");
