@@ -650,6 +650,7 @@
           <button class="filter-option" type="button" data-round="第一轮">第一轮</button>
           <button class="filter-option" type="button" data-round="第二轮">第二轮</button>
           <button class="filter-option" type="button" data-round="第三轮">第三轮</button>
+          <button class="filter-option" type="button" data-round="第四轮">第四轮</button>
         </div>
       </div>
 
@@ -743,142 +744,97 @@
       </svg>`;
 
     const ZOOM_PRESETS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 2];
+    const ROUND_OPTIONS = ["第一轮", "第二轮", "第三轮", "第四轮"];
 
+    function makeNode({ id, num, round, x, y, createdAt, ptm, proteolytic, mw, selected }) {
+      const label = num === 0 ? "PDL1-WT01" : `CAND-PDL1-${String(num).padStart(3, "0")}`;
+      const serial = `PDL001-20260112-${String(num === 0 ? 1 : num + 8).padStart(3, "0")}`;
+      return {
+        id,
+        label,
+        sub: round ? `轮次/阶段：${round}` : "",
+        round,
+        x,
+        y,
+        selected: !!selected,
+        meta: {
+          objectType: "Antibody Complex",
+          serial,
+          project: "PDL1-01",
+          creator: "david",
+          createdAt,
+          antigen: "Antigen001",
+          isotype: "IgG",
+          ptm,
+          proteolytic,
+          mw,
+        },
+      };
+    }
+
+    // 漏斗：第一轮 3 → 第二轮 6 → 第三轮 4 → 第四轮 2（筛选收敛）
     const nodes = [
-      {
-        id: "root", label: "PDL1-WT01", sub: "", round: null, x: 80, y: 360, selected: false,
-        meta: {
-          objectType: "Antibody Complex",
-          serial: "PDL001-20260112-001",
-          project: "PDL1-01",
-          creator: "david",
-          createdAt: "2026-01-12 09:20:11",
-          antigen: "Antigen001",
-          isotype: "IgG",
-          ptm: "0.58",
-          proteolytic: "0.40",
-          mw: "144920.2",
-        },
-      },
-      {
-        id: "r1a", label: "CAND-PDL1-001", sub: "轮次/阶段：第一轮", round: "第一轮", x: 420, y: 140,
-        meta: {
-          objectType: "Antibody Complex",
-          serial: "PDL001-20260112-009",
-          project: "PDL1-01",
-          creator: "david",
-          createdAt: "2026-01-15 11:02:44",
-          antigen: "Antigen001",
-          isotype: "IgG",
-          ptm: "0.60",
-          proteolytic: "0.41",
-          mw: "145102.8",
-        },
-      },
-      {
-        id: "r1b", label: "CAND-PDL1-002", sub: "轮次/阶段：第一轮", round: "第一轮", x: 420, y: 320,
-        meta: {
-          objectType: "Antibody Complex",
-          serial: "PDL001-20260112-010",
-          project: "PDL1-01",
-          creator: "david",
-          createdAt: "2026-01-15 11:08:17",
-          antigen: "Antigen001",
-          isotype: "IgG",
-          ptm: "0.59",
-          proteolytic: "0.39",
-          mw: "145088.1",
-        },
-      },
-      {
-        id: "r1c", label: "CAND-PDL1-003", sub: "轮次/阶段：第一轮", round: "第一轮", x: 420, y: 500,
-        meta: {
-          objectType: "Antibody Complex",
-          serial: "PDL001-20260112-011",
-          project: "PDL1-01",
-          creator: "david",
-          createdAt: "2026-01-15 11:15:03",
-          antigen: "Antigen001",
-          isotype: "IgG",
-          ptm: "0.61",
-          proteolytic: "0.43",
-          mw: "145210.5",
-        },
-      },
-      {
-        id: "r2a", label: "CAND-PDL1-004", sub: "轮次/阶段：第二轮", round: "第二轮", x: 780, y: 140,
-        meta: {
-          objectType: "Antibody Complex",
-          serial: "PDL001-20260112-012",
-          project: "PDL1-01",
-          creator: "david",
-          createdAt: "2026-01-20 15:36:02",
-          antigen: "Antigen001",
-          isotype: "IgG",
-          ptm: "0.62",
-          proteolytic: "0.42",
-          mw: "145403.4",
-        },
-      },
-      {
-        id: "r2b", label: "CAND-PDL1-005", sub: "轮次/阶段：第二轮", round: "第二轮", x: 780, y: 320,
-        meta: {
-          objectType: "Antibody Complex",
-          serial: "PDL001-20260112-013",
-          project: "PDL1-01",
-          creator: "david",
-          createdAt: "2026-01-20 15:40:28",
-          antigen: "Antigen001",
-          isotype: "IgG",
-          ptm: "0.63",
-          proteolytic: "0.44",
-          mw: "145418.9",
-        },
-      },
-      {
-        id: "r2c", label: "CAND-PDL1-006", sub: "轮次/阶段：第二轮", round: "第二轮", x: 780, y: 500,
-        meta: {
-          objectType: "Antibody Complex",
-          serial: "PDL001-20260112-014",
-          project: "PDL1-01",
-          creator: "david",
-          createdAt: "2026-01-20 15:44:51",
-          antigen: "Antigen001",
-          isotype: "IgG",
-          ptm: "0.64",
-          proteolytic: "0.45",
-          mw: "145455.2",
-        },
-      },
-      {
-        id: "r3a", label: "CAND-PDL1-007", sub: "轮次/阶段：第三轮", round: "第三轮", x: 1140, y: 500,
-        meta: {
-          objectType: "Antibody Complex",
-          serial: "PDL001-20260112-015",
-          project: "PDL1-01",
-          creator: "david",
-          createdAt: "2026-01-25 10:18:36",
-          antigen: "Antigen001",
-          isotype: "IgG",
-          ptm: "0.65",
-          proteolytic: "0.46",
-          mw: "145502.7",
-        },
-      },
+      makeNode({ id: "root", num: 0, round: null, x: 80, y: 300, createdAt: "2026-01-12 09:20:11", ptm: "0.58", proteolytic: "0.40", mw: "144920.2", selected: false }),
+
+      makeNode({ id: "r1a", num: 1, round: "第一轮", x: 420, y: 80, createdAt: "2026-01-15 11:02:44", ptm: "0.60", proteolytic: "0.41", mw: "145102.8" }),
+      makeNode({ id: "r1b", num: 2, round: "第一轮", x: 420, y: 280, createdAt: "2026-01-15 11:08:17", ptm: "0.59", proteolytic: "0.39", mw: "145088.1" }),
+      makeNode({ id: "r1c", num: 3, round: "第一轮", x: 420, y: 480, createdAt: "2026-01-15 11:15:03", ptm: "0.61", proteolytic: "0.43", mw: "145210.5" }),
+
+      makeNode({ id: "r2a", num: 4, round: "第二轮", x: 780, y: 20, createdAt: "2026-01-20 15:36:02", ptm: "0.62", proteolytic: "0.42", mw: "145403.4" }),
+      makeNode({ id: "r2b", num: 5, round: "第二轮", x: 780, y: 120, createdAt: "2026-01-20 15:40:28", ptm: "0.63", proteolytic: "0.44", mw: "145418.9" }),
+      makeNode({ id: "r2c", num: 6, round: "第二轮", x: 780, y: 220, createdAt: "2026-01-20 15:44:51", ptm: "0.64", proteolytic: "0.45", mw: "145455.2" }),
+      makeNode({ id: "r2d", num: 7, round: "第二轮", x: 780, y: 320, createdAt: "2026-01-20 15:48:10", ptm: "0.62", proteolytic: "0.43", mw: "145390.1" }),
+      makeNode({ id: "r2e", num: 8, round: "第二轮", x: 780, y: 420, createdAt: "2026-01-20 15:52:33", ptm: "0.65", proteolytic: "0.46", mw: "145470.6" }),
+      makeNode({ id: "r2f", num: 9, round: "第二轮", x: 780, y: 520, createdAt: "2026-01-20 15:56:07", ptm: "0.61", proteolytic: "0.42", mw: "145360.8" }),
+
+      makeNode({ id: "r3a", num: 10, round: "第三轮", x: 1140, y: 80, createdAt: "2026-01-25 10:18:36", ptm: "0.66", proteolytic: "0.47", mw: "145520.3" }),
+      makeNode({ id: "r3b", num: 11, round: "第三轮", x: 1140, y: 220, createdAt: "2026-01-25 10:24:11", ptm: "0.67", proteolytic: "0.48", mw: "145548.9" }),
+      makeNode({ id: "r3c", num: 12, round: "第三轮", x: 1140, y: 360, createdAt: "2026-01-25 10:30:45", ptm: "0.65", proteolytic: "0.46", mw: "145502.7" }),
+      makeNode({ id: "r3d", num: 13, round: "第三轮", x: 1140, y: 500, createdAt: "2026-01-25 10:36:02", ptm: "0.68", proteolytic: "0.49", mw: "145580.4" }),
+
+      makeNode({ id: "r4a", num: 14, round: "第四轮", x: 1500, y: 180, createdAt: "2026-01-28 14:05:19", ptm: "0.70", proteolytic: "0.50", mw: "145640.2" }),
+      makeNode({ id: "r4b", num: 15, round: "第四轮", x: 1500, y: 380, createdAt: "2026-01-28 14:12:44", ptm: "0.71", proteolytic: "0.51", mw: "145668.8" }),
     ];
 
     const edges = [
+      // 父子：全部候选均指向亲本 PDL1-WT01
       { from: "root", to: "r1a", type: "parent" },
       { from: "root", to: "r1b", type: "parent" },
       { from: "root", to: "r1c", type: "parent" },
       { from: "root", to: "r2a", type: "parent" },
       { from: "root", to: "r2b", type: "parent" },
       { from: "root", to: "r2c", type: "parent" },
+      { from: "root", to: "r2d", type: "parent" },
+      { from: "root", to: "r2e", type: "parent" },
+      { from: "root", to: "r2f", type: "parent" },
       { from: "root", to: "r3a", type: "parent" },
+      { from: "root", to: "r3b", type: "parent" },
+      { from: "root", to: "r3c", type: "parent" },
+      { from: "root", to: "r3d", type: "parent" },
+      { from: "root", to: "r4a", type: "parent" },
+      { from: "root", to: "r4b", type: "parent" },
+
+      // 关联：第一轮 → 第二轮（扩增）
       { from: "r1a", to: "r2a", type: "assoc" },
       { from: "r1a", to: "r2b", type: "assoc" },
       { from: "r1b", to: "r2c", type: "assoc" },
-      { from: "r2c", to: "r3a", type: "assoc" },
+      { from: "r1b", to: "r2d", type: "assoc" },
+      { from: "r1c", to: "r2e", type: "assoc" },
+      { from: "r1c", to: "r2f", type: "assoc" },
+
+      // 关联：第二轮 → 第三轮（初筛）
+      { from: "r2a", to: "r3a", type: "assoc" },
+      { from: "r2b", to: "r3a", type: "assoc" },
+      { from: "r2c", to: "r3b", type: "assoc" },
+      { from: "r2d", to: "r3c", type: "assoc" },
+      { from: "r2e", to: "r3d", type: "assoc" },
+      { from: "r2f", to: "r3d", type: "assoc" },
+
+      // 关联：第三轮 → 第四轮（收敛）
+      { from: "r3a", to: "r4a", type: "assoc" },
+      { from: "r3b", to: "r4a", type: "assoc" },
+      { from: "r3c", to: "r4b", type: "assoc" },
+      { from: "r3d", to: "r4b", type: "assoc" },
     ];
 
     const RELATION_LABELS = {
@@ -889,7 +845,7 @@
 
     const filters = {
       relation: "all",
-      rounds: new Set(["第一轮", "第二轮", "第三轮"]),
+      rounds: new Set(ROUND_OPTIONS),
     };
 
     const view = {
@@ -1238,7 +1194,7 @@
 
     function renderRoundTags() {
       const wrap = document.getElementById("round-tags");
-      wrap.innerHTML = ["第一轮", "第二轮", "第三轮"]
+      wrap.innerHTML = ROUND_OPTIONS
         .filter((r) => filters.rounds.has(r))
         .map((r) => `
           <span class="filter-tag" data-round="${r}">
