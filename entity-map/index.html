@@ -1278,6 +1278,7 @@
     function enableDrag(el, data) {
       let dragging = false;
       let moved = false;
+      let openPopoverOnRelease = false;
       let startX = 0;
       let startY = 0;
       let originX = 0;
@@ -1287,19 +1288,17 @@
         if (ev.button !== undefined && ev.button !== 0) return;
         dragging = true;
         moved = false;
+        // 仅点击名称 chip 时，释放后才打开浮窗
+        openPopoverOnRelease = Boolean(ev.target.closest(".node-chip"));
         el.classList.add("dragging");
         el.setPointerCapture(ev.pointerId);
         startX = ev.clientX;
         startY = ev.clientY;
         originX = data.x;
         originY = data.y;
-        // 外围点击：仅激活；点击名称 chip：激活并打开浮窗
+        // 按下即激活节点；外围点击不打开浮窗
         setSelectedNode(data.id);
-        if (ev.target.closest(".node-chip")) {
-          showPopover(data, el);
-        } else {
-          hidePopover();
-        }
+        if (!openPopoverOnRelease) hidePopover();
         ev.preventDefault();
         ev.stopPropagation();
       };
@@ -1310,6 +1309,7 @@
         const screenDy = ev.clientY - startY;
         if (!moved && Math.hypot(screenDx, screenDy) > CLICK_MOVE_THRESHOLD) {
           moved = true;
+          openPopoverOnRelease = false;
           hidePopover();
         }
         if (!moved) return;
@@ -1332,6 +1332,12 @@
         el.style.top = data.y + "px";
         try { el.releasePointerCapture(ev.pointerId); } catch (_) {}
         drawEdges();
+
+        // 点击 chip 并释放（非拖拽）→ 打开浮窗
+        if (!moved && openPopoverOnRelease) {
+          showPopover(data, el);
+        }
+        openPopoverOnRelease = false;
       };
 
       el.addEventListener("pointerdown", onPointerDown);
