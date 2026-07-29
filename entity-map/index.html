@@ -1338,6 +1338,9 @@
         startY = ev.clientY;
         originX = data.x;
         originY = data.y;
+        // 按下即激活：选中高亮并打开浮窗（不必等到释放）
+        setSelectedNode(data.id);
+        showPopover(data, el);
         ev.preventDefault();
         ev.stopPropagation();
       };
@@ -1370,12 +1373,6 @@
         el.style.top = data.y + "px";
         try { el.releasePointerCapture(ev.pointerId); } catch (_) {}
         drawEdges();
-
-        // 点击并释放（非拖拽）→ 选中高亮并打开浮窗
-        if (!moved) {
-          setSelectedNode(data.id);
-          showPopover(data, el);
-        }
       };
 
       el.addEventListener("pointerdown", onPointerDown);
