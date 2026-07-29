@@ -314,6 +314,7 @@
       padding: 3px 8px 3px 5px;
       min-height: 22px;
       max-width: 100%;
+      cursor: pointer;
     }
 
     .node.selected .node-chip { background: #dfe3ec; }
@@ -1294,9 +1295,13 @@
         startY = ev.clientY;
         originX = data.x;
         originY = data.y;
-        // 按下即激活：选中高亮并打开浮窗（不必等到释放）
+        // 外围点击：仅激活；点击名称 chip：激活并打开浮窗
         setSelectedNode(data.id);
-        showPopover(data, el);
+        if (ev.target.closest(".node-chip")) {
+          showPopover(data, el);
+        } else {
+          hidePopover();
+        }
         ev.preventDefault();
         ev.stopPropagation();
       };
