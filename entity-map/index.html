@@ -788,13 +788,13 @@
       makeNode({ id: "r2e", num: 8, round: "第二轮", x: 780, y: 420, createdAt: "2026-01-20 15:52:33", ptm: "0.65", proteolytic: "0.46", mw: "145470.6" }),
       makeNode({ id: "r2f", num: 9, round: "第二轮", x: 780, y: 520, createdAt: "2026-01-20 15:56:07", ptm: "0.61", proteolytic: "0.42", mw: "145360.8" }),
 
-      makeNode({ id: "r3a", num: 10, round: "第三轮", x: 1140, y: 80, createdAt: "2026-01-25 10:18:36", ptm: "0.66", proteolytic: "0.47", mw: "145520.3" }),
+      makeNode({ id: "r3a", num: 10, round: "第三轮", x: 1140, y: 20, createdAt: "2026-01-25 10:18:36", ptm: "0.66", proteolytic: "0.47", mw: "145520.3" }),
       makeNode({ id: "r3b", num: 11, round: "第三轮", x: 1140, y: 220, createdAt: "2026-01-25 10:24:11", ptm: "0.67", proteolytic: "0.48", mw: "145548.9" }),
-      makeNode({ id: "r3c", num: 12, round: "第三轮", x: 1140, y: 360, createdAt: "2026-01-25 10:30:45", ptm: "0.65", proteolytic: "0.46", mw: "145502.7" }),
-      makeNode({ id: "r3d", num: 13, round: "第三轮", x: 1140, y: 500, createdAt: "2026-01-25 10:36:02", ptm: "0.68", proteolytic: "0.49", mw: "145580.4" }),
+      makeNode({ id: "r3c", num: 12, round: "第三轮", x: 1140, y: 320, createdAt: "2026-01-25 10:30:45", ptm: "0.65", proteolytic: "0.46", mw: "145502.7" }),
+      makeNode({ id: "r3d", num: 13, round: "第三轮", x: 1140, y: 420, createdAt: "2026-01-25 10:36:02", ptm: "0.68", proteolytic: "0.49", mw: "145580.4" }),
 
-      makeNode({ id: "r4a", num: 14, round: "第四轮", x: 1500, y: 180, createdAt: "2026-01-28 14:05:19", ptm: "0.70", proteolytic: "0.50", mw: "145640.2" }),
-      makeNode({ id: "r4b", num: 15, round: "第四轮", x: 1500, y: 380, createdAt: "2026-01-28 14:12:44", ptm: "0.71", proteolytic: "0.51", mw: "145668.8" }),
+      makeNode({ id: "r4a", num: 14, round: "第四轮", x: 1500, y: 20, createdAt: "2026-01-28 14:05:19", ptm: "0.70", proteolytic: "0.50", mw: "145640.2" }),
+      makeNode({ id: "r4b", num: 15, round: "第四轮", x: 1500, y: 320, createdAt: "2026-01-28 14:12:44", ptm: "0.71", proteolytic: "0.51", mw: "145668.8" }),
     ];
 
     const edges = [
@@ -823,19 +823,17 @@
       { from: "r1c", to: "r2e", type: "assoc" },
       { from: "r1c", to: "r2f", type: "assoc" },
 
-      // 关联：第二轮 → 第三轮（初筛）
+      // 关联：第二轮 → 第三轮（初筛：6→4，每节点仅 1 条上轮关联）
       { from: "r2a", to: "r3a", type: "assoc" },
-      { from: "r2b", to: "r3a", type: "assoc" },
       { from: "r2c", to: "r3b", type: "assoc" },
       { from: "r2d", to: "r3c", type: "assoc" },
       { from: "r2e", to: "r3d", type: "assoc" },
-      { from: "r2f", to: "r3d", type: "assoc" },
+      // r2b、r2f 未入选下一轮
 
-      // 关联：第三轮 → 第四轮（收敛）
+      // 关联：第三轮 → 第四轮（收敛：4→2，每节点仅 1 条上轮关联）
       { from: "r3a", to: "r4a", type: "assoc" },
-      { from: "r3b", to: "r4a", type: "assoc" },
       { from: "r3c", to: "r4b", type: "assoc" },
-      { from: "r3d", to: "r4b", type: "assoc" },
+      // r3b、r3d 未入选下一轮
     ];
 
     const RELATION_LABELS = {
