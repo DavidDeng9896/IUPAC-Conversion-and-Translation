@@ -1,0 +1,1563 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Entity Map — PDL1</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg-canvas: #f7f7f9;
+      --border-card: #d4d4d7;
+      --text-sub: #6b6b6d;
+      --blue-title: #4a6ef8;
+      --blue-selected: #7b92f0;
+      --blue-selected-bg: #f5f7ff;
+      --blue-icon: #4b78f0;
+      --chip: #e2e3e5;
+      --edge-parent: #C4D1C2;
+      --edge-assoc: #CED2D9;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      height: 100%;
+      width: 100%;
+      overflow: hidden;
+      font-family: "IBM Plex Sans", "Helvetica Neue", Helvetica, Arial, "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: var(--bg-canvas);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .map {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: var(--bg-canvas);
+      background-image: radial-gradient(circle, #d5d6d9 1.05px, transparent 1.2px);
+      background-size: 22px 22px;
+      background-position: 8px 6px;
+      touch-action: none;
+    }
+
+    .map:fullscreen,
+    .map:-webkit-full-screen {
+      width: 100vw;
+      height: 100vh;
+      background-color: var(--bg-canvas);
+      background-image: radial-gradient(circle, #d5d6d9 1.05px, transparent 1.2px);
+      background-size: 22px 22px;
+      background-position: 8px 6px;
+    }
+
+    /* 世界坐标系容器：不设 100% 宽高，避免 SVG 与节点缩放不一致 */
+    .stage {
+      position: absolute;
+      left: 0;
+      top: 0;
+      transform-origin: 0 0;
+    }
+
+    /* —— 左上角筛选条 —— */
+    .filter-bar {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      z-index: 40;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 40px;
+      padding: 6px 10px;
+      background: #fff;
+      border: 1px solid #e6e6e8;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(16, 16, 20, 0.08);
+      font-size: 13px;
+      color: #2a2a2e;
+      user-select: none;
+    }
+
+    .filter-dropdown { position: relative; }
+
+    .filter-trigger {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      height: 28px;
+      padding: 0 8px;
+      border: none;
+      background: transparent;
+      font: inherit;
+      color: inherit;
+      cursor: pointer;
+      border-radius: 4px;
+      white-space: nowrap;
+    }
+
+    .filter-trigger:hover { background: #f3f4f6; }
+    .filter-trigger svg { width: 12px; height: 12px; color: #6b6b6f; flex-shrink: 0; }
+
+    .filter-menu {
+      display: none;
+      position: absolute;
+      top: calc(100% + 6px);
+      left: 0;
+      min-width: 132px;
+      padding: 4px;
+      background: #fff;
+      border: 1px solid #e6e6e8;
+      border-radius: 8px;
+      box-shadow: 0 6px 18px rgba(16, 16, 20, 0.12);
+      z-index: 50;
+    }
+
+    .filter-menu.open { display: block; }
+    .filter-menu.up { top: auto; bottom: calc(100% + 6px); }
+
+    .filter-option {
+      display: block;
+      width: 100%;
+      text-align: left;
+      padding: 8px 10px;
+      border: none;
+      background: transparent;
+      font: inherit;
+      color: #2a2a2e;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    .filter-option:hover { background: #f3f4f6; }
+    .filter-option.active {
+      color: #3b5bdb;
+      background: #eef2ff;
+      font-weight: 600;
+    }
+
+    .filter-divider {
+      width: 1px;
+      height: 20px;
+      background: #e6e6e8;
+      flex-shrink: 0;
+    }
+
+    .filter-tags {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .filter-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      height: 26px;
+      padding: 0 6px 0 10px;
+      background: #f1f3f5;
+      border-radius: 4px;
+      font-size: 12px;
+      color: #3c3c40;
+      white-space: nowrap;
+    }
+
+    .filter-tag button {
+      width: 16px;
+      height: 16px;
+      border: none;
+      background: transparent;
+      color: #8a8a8e;
+      cursor: pointer;
+      border-radius: 3px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      line-height: 1;
+      padding: 0;
+    }
+
+    .filter-tag button:hover {
+      background: #e2e4e8;
+      color: #2a2a2e;
+    }
+
+    .filter-more {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      margin-left: 2px;
+      border: none;
+      background: transparent;
+      color: #5a5a5e;
+      border-radius: 4px;
+      cursor: pointer;
+      flex-shrink: 0;
+      padding: 0;
+    }
+
+    .filter-more:hover {
+      background: #f3f4f6;
+      color: #2a2a2e;
+    }
+
+    .filter-more svg {
+      width: 16px;
+      height: 16px;
+      display: block;
+    }
+
+    .edges {
+      position: absolute;
+      left: 0;
+      top: 0;
+      pointer-events: none;
+      overflow: visible;
+      z-index: 1;
+    }
+
+    .edges path.line {
+      fill: none;
+      stroke-width: 1.6;
+      stroke-linecap: round;
+    }
+
+    .edges path.line.parent { stroke: var(--edge-parent); }
+    .edges path.line.assoc {
+      stroke: var(--edge-assoc);
+      stroke-dasharray: 5 4;
+      stroke-width: 1.5;
+    }
+
+    .edges path.arrow.parent { fill: var(--edge-parent); stroke: none; }
+    .edges path.arrow.assoc { fill: var(--edge-assoc); stroke: none; }
+
+    /* 选中节点时：相关上下关系高亮，其余弱化 */
+    .edges.has-selection path.line:not(.highlight),
+    .edges.has-selection path.arrow:not(.highlight) {
+      opacity: 0.28;
+    }
+
+    .edges path.line.highlight {
+      stroke: #5b7cf0;
+      stroke-width: 2.2;
+      opacity: 1;
+    }
+
+    .edges path.line.highlight.assoc {
+      stroke: #7b92f0;
+      stroke-dasharray: 5 4;
+      stroke-width: 2;
+    }
+
+    .edges path.arrow.highlight {
+      fill: #5b7cf0;
+      opacity: 1;
+    }
+
+    .edges path.arrow.highlight.assoc {
+      fill: #7b92f0;
+    }
+
+    .node {
+      position: absolute;
+      background: #fff;
+      border: 1px solid var(--border-card);
+      border-radius: 4px;
+      padding: 8px 9px 9px;
+      box-shadow: 0 1px 2px rgba(16, 16, 20, 0.05);
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 7px;
+      z-index: 2;
+      cursor: grab;
+      user-select: none;
+      min-width: 168px;
+      touch-action: none;
+      text-rendering: geometricPrecision;
+    }
+
+    .node.hidden { display: none; }
+
+    .node:active,
+    .node.dragging {
+      cursor: grabbing;
+      z-index: 20;
+      box-shadow: 0 6px 18px rgba(16, 16, 20, 0.14);
+    }
+
+    .node.selected {
+      border-color: var(--blue-selected);
+      background: var(--blue-selected-bg);
+      box-shadow: 0 0 0 0.5px rgba(72, 111, 251, 0.25);
+    }
+
+    .node.selected.dragging {
+      box-shadow: 0 6px 18px rgba(72, 111, 251, 0.22);
+    }
+
+    .node-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      align-self: stretch;
+      background: var(--chip);
+      border-radius: 3px;
+      padding: 3px 8px 3px 5px;
+      min-height: 22px;
+      max-width: 100%;
+      cursor: pointer;
+    }
+
+    .node.selected .node-chip { background: #dfe3ec; }
+
+    .node-chip .icon {
+      flex-shrink: 0;
+      width: 13px;
+      height: 13px;
+      color: var(--blue-icon);
+      display: block;
+    }
+
+    .node-id {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--blue-title);
+      line-height: 1.15;
+      white-space: nowrap;
+    }
+
+    .node-type {
+      font-size: 12px;
+      color: var(--text-sub);
+      line-height: 1.15;
+      padding-left: 1px;
+      white-space: nowrap;
+    }
+
+    .zoom-bar {
+      position: absolute;
+      left: 26px;
+      bottom: 26px;
+      display: flex;
+      align-items: center;
+      height: 40px;
+      background: #fff;
+      border: 1px solid #e4e4e6;
+      border-radius: 6px;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+      z-index: 30;
+    }
+
+    .zoom-group { display: flex; align-items: center; height: 100%; position: relative; }
+
+    .zoom-btn {
+      width: 34px;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: none;
+      background: transparent;
+      color: #2c2c30;
+      cursor: pointer;
+      padding: 0;
+    }
+
+    .zoom-btn:hover { background: #f3f4f6; }
+    .zoom-btn:active { background: #ebebef; }
+
+    .zoom-btn .fs-exit { display: none; }
+    .zoom-btn.is-fullscreen .fs-enter { display: none; }
+    .zoom-btn.is-fullscreen .fs-exit { display: block; }
+
+    .zoom-pct {
+      min-width: 52px;
+      height: 100%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+      border: none;
+      background: transparent;
+      font-size: 13px;
+      font-weight: 500;
+      font-family: inherit;
+      color: #1b1b1d;
+      font-variant-numeric: tabular-nums;
+      user-select: none;
+      cursor: pointer;
+      padding: 0 4px;
+      border-radius: 4px;
+    }
+
+    .zoom-pct:hover { background: #f3f4f6; }
+
+    .zoom-pct svg {
+      width: 10px;
+      height: 10px;
+      color: #6b6b6f;
+    }
+
+    .zoom-menu {
+      display: none;
+      position: absolute;
+      left: 50%;
+      bottom: calc(100% + 8px);
+      transform: translateX(-50%);
+      min-width: 88px;
+      padding: 4px;
+      background: #fff;
+      border: 1px solid #e6e6e8;
+      border-radius: 8px;
+      box-shadow: 0 6px 18px rgba(16, 16, 20, 0.12);
+      z-index: 60;
+    }
+
+    .zoom-menu.open { display: block; }
+
+    .zoom-menu .filter-option {
+      text-align: center;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .zoom-divider {
+      width: 1px;
+      height: 22px;
+      background: #e6e6e8;
+      margin: 0 2px;
+    }
+
+    .edge-legend {
+      position: absolute;
+      right: 26px;
+      bottom: 26px;
+      z-index: 30;
+      display: flex;
+      align-items: center;
+      height: 40px;
+      gap: 22px;
+      padding: 0 16px;
+      background: #fff;
+      border: 1px solid #e4e4e6;
+      border-radius: 6px;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+      user-select: none;
+      box-sizing: border-box;
+    }
+
+    .legend-item {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .legend-line {
+      width: 18px;
+      height: 2px;
+      display: block;
+      flex-shrink: 0;
+      border-radius: 1px;
+    }
+
+    .legend-line.parent { background: #C4D1C2; }
+    .legend-line.assoc {
+      background: repeating-linear-gradient(
+        to right,
+        #CED2D9 0 4px,
+        transparent 4px 7px
+      );
+    }
+
+    .legend-end {
+      display: inline-flex;
+      align-items: center;
+      flex-shrink: 0;
+      margin-left: 6px;
+    }
+
+    .legend-end .legend-line {
+      width: 14px;
+      border-radius: 1px 0 0 1px;
+    }
+
+    .legend-arrow {
+      width: 0;
+      height: 0;
+      border-top: 4px solid transparent;
+      border-bottom: 4px solid transparent;
+      border-left: 6px solid #C4D1C2;
+      flex-shrink: 0;
+      margin-left: -1px;
+    }
+
+    .legend-arrow.assoc { border-left-color: #CED2D9; }
+
+    .legend-item > span:not([class]) {
+      font-size: 12px;
+      color: #5a5a5e;
+      line-height: 1;
+      white-space: nowrap;
+    }
+
+    /* —— 节点详情浮窗 —— */
+    .node-popover {
+      display: none;
+      position: absolute;
+      z-index: 50;
+      width: 320px;
+      max-height: min(420px, calc(100% - 48px));
+      background: #fff;
+      border: 1px solid #e6e6e8;
+      border-radius: 8px;
+      box-shadow: 0 8px 28px rgba(16, 16, 20, 0.14);
+      overflow: hidden;
+      font-size: 13px;
+      color: #2a2a2e;
+    }
+
+    .node-popover.open { display: flex; flex-direction: column; }
+
+    .node-popover-body {
+      overflow-y: auto;
+      padding: 14px 16px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      scrollbar-width: thin;
+      scrollbar-color: #d0d1d5 transparent;
+    }
+
+    .node-popover-body::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    .node-popover-body::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .node-popover-body::-webkit-scrollbar-thumb {
+      background: #d0d1d5;
+      border-radius: 4px;
+    }
+
+    .node-popover-body::-webkit-scrollbar-thumb:hover {
+      background: #b8b9be;
+    }
+
+    .pop-row {
+      display: grid;
+      grid-template-columns: 108px 1fr;
+      gap: 10px;
+      align-items: start;
+    }
+
+    .pop-label {
+      color: #6b6b6f;
+      line-height: 22px;
+      white-space: nowrap;
+    }
+
+    .pop-value {
+      color: #1b1b1d;
+      line-height: 22px;
+      word-break: break-all;
+    }
+
+    .pop-value.muted { color: #9a9aa0; }
+
+    .pop-name {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--blue-title);
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .pop-name .icon {
+      width: 14px;
+      height: 14px;
+      color: var(--blue-icon);
+      flex-shrink: 0;
+    }
+
+    .pop-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .pop-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      max-width: 100%;
+      padding: 2px 8px 2px 5px;
+      background: #eef2ff;
+      border-radius: 4px;
+      color: var(--blue-title);
+      font-size: 12px;
+      font-weight: 600;
+      line-height: 18px;
+      cursor: pointer;
+    }
+
+    .pop-tag .icon {
+      width: 12px;
+      height: 12px;
+      color: var(--blue-icon);
+      flex-shrink: 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="map" id="map">
+    <div class="stage" id="stage">
+      <svg class="edges" id="edges" xmlns="http://www.w3.org/2000/svg"></svg>
+    </div>
+
+    <div class="filter-bar" id="filter-bar">
+      <div class="filter-dropdown" id="relation-dropdown">
+        <button class="filter-trigger" type="button" id="relation-trigger">
+          <span id="relation-label">全部关系</span>
+          <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4.5L6 7.5L9 4.5"/></svg>
+        </button>
+        <div class="filter-menu" id="relation-menu">
+          <button class="filter-option active" type="button" data-value="all">全部关系</button>
+          <button class="filter-option" type="button" data-value="parent">父子关系</button>
+          <button class="filter-option" type="button" data-value="assoc">关联关系</button>
+        </div>
+      </div>
+
+      <div class="filter-divider"></div>
+
+      <div class="filter-tags" id="round-tags"></div>
+
+      <div class="filter-dropdown" id="round-dropdown">
+        <button class="filter-trigger" type="button" id="round-trigger" aria-label="轮次筛选">
+          <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4.5L6 7.5L9 4.5"/></svg>
+        </button>
+        <div class="filter-menu" id="round-menu">
+          <button class="filter-option" type="button" data-round="第一轮">第一轮</button>
+          <button class="filter-option" type="button" data-round="第二轮">第二轮</button>
+          <button class="filter-option" type="button" data-round="第三轮">第三轮</button>
+          <button class="filter-option" type="button" data-round="第四轮">第四轮</button>
+        </div>
+      </div>
+
+      <button class="filter-more" type="button" id="filter-more" title="更多筛选" aria-label="更多筛选">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M2 3.5h12"/>
+          <path d="M4 8h8"/>
+          <path d="M6.5 12.5h3"/>
+          <circle cx="5.5" cy="3.5" r="1.35" fill="currentColor" stroke="none"/>
+          <circle cx="10" cy="8" r="1.35" fill="currentColor" stroke="none"/>
+          <circle cx="8" cy="12.5" r="1.35" fill="currentColor" stroke="none"/>
+        </svg>
+      </button>
+    </div>
+
+    <div class="zoom-bar">
+      <div class="zoom-group">
+        <button class="zoom-btn" type="button" id="zoom-out" aria-label="缩小">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M3 7h8"/></svg>
+        </button>
+        <div class="zoom-group" style="position:relative">
+          <button class="zoom-pct" type="button" id="zoom-pct" aria-haspopup="listbox" aria-expanded="false">
+            <span id="zoom-pct-text">100%</span>
+            <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4.5L6 7.5L9 4.5"/></svg>
+          </button>
+          <div class="zoom-menu" id="zoom-menu" role="listbox">
+            <button class="filter-option" type="button" data-zoom="0.25">25%</button>
+            <button class="filter-option" type="button" data-zoom="0.5">50%</button>
+            <button class="filter-option" type="button" data-zoom="0.75">75%</button>
+            <button class="filter-option active" type="button" data-zoom="1">100%</button>
+            <button class="filter-option" type="button" data-zoom="1.25">125%</button>
+            <button class="filter-option" type="button" data-zoom="1.5">150%</button>
+            <button class="filter-option" type="button" data-zoom="2">200%</button>
+          </div>
+        </div>
+        <button class="zoom-btn" type="button" id="zoom-in" aria-label="放大">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M7 3v8M3 7h8"/></svg>
+        </button>
+      </div>
+      <div class="zoom-divider"></div>
+      <div class="zoom-group">
+        <button class="zoom-btn" type="button" id="zoom-fullscreen" aria-label="全屏" title="全屏" aria-pressed="false">
+          <svg class="fs-icon fs-enter" width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M2 5.5V2h3.5M13 5.5V2H9.5M2 9.5V13h3.5M13 9.5V13H9.5"/>
+          </svg>
+          <svg class="fs-icon fs-exit" width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M5.5 2v3.5H2M9.5 2v3.5H13M5.5 13v-3.5H2M9.5 13v-3.5H13"/>
+          </svg>
+        </button>
+        <button class="zoom-btn" type="button" id="zoom-center" aria-label="定位到选中节点并100%显示" title="定位到选中节点 · 100%">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round">
+            <circle cx="8" cy="8" r="3.4"/>
+            <circle cx="8" cy="8" r="1" fill="currentColor" stroke="none"/>
+            <path d="M8 1.25v2M8 12.75v2M1.25 8h2M12.75 8h2"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="edge-legend" aria-label="连线示意图">
+      <div class="legend-item">
+        <span class="legend-line parent" aria-hidden="true"></span>
+        <span>父子关系</span>
+        <span class="legend-end" aria-hidden="true">
+          <span class="legend-line parent"></span>
+          <span class="legend-arrow"></span>
+        </span>
+      </div>
+      <div class="legend-item">
+        <span class="legend-line assoc" aria-hidden="true"></span>
+        <span>关联关系</span>
+        <span class="legend-end" aria-hidden="true">
+          <span class="legend-line assoc"></span>
+          <span class="legend-arrow assoc"></span>
+        </span>
+      </div>
+    </div>
+
+    <div class="node-popover" id="node-popover" role="dialog" aria-label="节点详情">
+      <div class="node-popover-body" id="node-popover-body"></div>
+    </div>
+  </div>
+
+  <script>
+    const ICON_Y = `
+      <svg class="icon" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.55" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M7 12.2V7"/>
+        <path d="M7 7L3.4 2.9"/>
+        <path d="M7 7L10.6 2.9"/>
+        <path d="M5.3 12.2h3.4"/>
+      </svg>`;
+
+    const ZOOM_PRESETS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 2];
+    const ROUND_OPTIONS = ["第一轮", "第二轮", "第三轮", "第四轮"];
+
+    function makeNode({ id, num, round, x, y, createdAt, ptm, proteolytic, mw, selected }) {
+      const label = num === 0 ? "PDL1-WT01" : `CAND-PDL1-${String(num).padStart(3, "0")}`;
+      const serial = `PDL001-20260112-${String(num === 0 ? 1 : num + 8).padStart(3, "0")}`;
+      return {
+        id,
+        label,
+        sub: round ? `轮次/阶段：${round}` : "",
+        round,
+        x,
+        y,
+        selected: !!selected,
+        meta: {
+          objectType: "Antibody Complex",
+          serial,
+          project: "PDL1-01",
+          creator: "david",
+          createdAt,
+          antigen: "Antigen001",
+          isotype: "IgG",
+          ptm,
+          proteolytic,
+          mw,
+        },
+      };
+    }
+
+    // 漏斗：第一轮 3 → 第二轮 6 → 第三轮 4 → 第四轮 2（筛选收敛）
+    const nodes = [
+      makeNode({ id: "root", num: 0, round: null, x: 80, y: 300, createdAt: "2026-01-12 09:20:11", ptm: "0.58", proteolytic: "0.40", mw: "144920.2", selected: false }),
+
+      makeNode({ id: "r1a", num: 1, round: "第一轮", x: 420, y: 80, createdAt: "2026-01-15 11:02:44", ptm: "0.60", proteolytic: "0.41", mw: "145102.8" }),
+      makeNode({ id: "r1b", num: 2, round: "第一轮", x: 420, y: 280, createdAt: "2026-01-15 11:08:17", ptm: "0.59", proteolytic: "0.39", mw: "145088.1" }),
+      makeNode({ id: "r1c", num: 3, round: "第一轮", x: 420, y: 480, createdAt: "2026-01-15 11:15:03", ptm: "0.61", proteolytic: "0.43", mw: "145210.5" }),
+
+      makeNode({ id: "r2a", num: 4, round: "第二轮", x: 780, y: 20, createdAt: "2026-01-20 15:36:02", ptm: "0.62", proteolytic: "0.42", mw: "145403.4" }),
+      makeNode({ id: "r2b", num: 5, round: "第二轮", x: 780, y: 120, createdAt: "2026-01-20 15:40:28", ptm: "0.63", proteolytic: "0.44", mw: "145418.9" }),
+      makeNode({ id: "r2c", num: 6, round: "第二轮", x: 780, y: 220, createdAt: "2026-01-20 15:44:51", ptm: "0.64", proteolytic: "0.45", mw: "145455.2" }),
+      makeNode({ id: "r2d", num: 7, round: "第二轮", x: 780, y: 320, createdAt: "2026-01-20 15:48:10", ptm: "0.62", proteolytic: "0.43", mw: "145390.1" }),
+      makeNode({ id: "r2e", num: 8, round: "第二轮", x: 780, y: 420, createdAt: "2026-01-20 15:52:33", ptm: "0.65", proteolytic: "0.46", mw: "145470.6" }),
+      makeNode({ id: "r2f", num: 9, round: "第二轮", x: 780, y: 520, createdAt: "2026-01-20 15:56:07", ptm: "0.61", proteolytic: "0.42", mw: "145360.8" }),
+
+      makeNode({ id: "r3a", num: 10, round: "第三轮", x: 1140, y: 20, createdAt: "2026-01-25 10:18:36", ptm: "0.66", proteolytic: "0.47", mw: "145520.3" }),
+      makeNode({ id: "r3b", num: 11, round: "第三轮", x: 1140, y: 220, createdAt: "2026-01-25 10:24:11", ptm: "0.67", proteolytic: "0.48", mw: "145548.9" }),
+      makeNode({ id: "r3c", num: 12, round: "第三轮", x: 1140, y: 320, createdAt: "2026-01-25 10:30:45", ptm: "0.65", proteolytic: "0.46", mw: "145502.7" }),
+      makeNode({ id: "r3d", num: 13, round: "第三轮", x: 1140, y: 420, createdAt: "2026-01-25 10:36:02", ptm: "0.68", proteolytic: "0.49", mw: "145580.4" }),
+
+      makeNode({ id: "r4a", num: 14, round: "第四轮", x: 1500, y: 20, createdAt: "2026-01-28 14:05:19", ptm: "0.70", proteolytic: "0.50", mw: "145640.2" }),
+      makeNode({ id: "r4b", num: 15, round: "第四轮", x: 1500, y: 320, createdAt: "2026-01-28 14:12:44", ptm: "0.71", proteolytic: "0.51", mw: "145668.8" }),
+    ];
+
+    const edges = [
+      // 父子：全部候选均指向亲本 PDL1-WT01
+      { from: "root", to: "r1a", type: "parent" },
+      { from: "root", to: "r1b", type: "parent" },
+      { from: "root", to: "r1c", type: "parent" },
+      { from: "root", to: "r2a", type: "parent" },
+      { from: "root", to: "r2b", type: "parent" },
+      { from: "root", to: "r2c", type: "parent" },
+      { from: "root", to: "r2d", type: "parent" },
+      { from: "root", to: "r2e", type: "parent" },
+      { from: "root", to: "r2f", type: "parent" },
+      { from: "root", to: "r3a", type: "parent" },
+      { from: "root", to: "r3b", type: "parent" },
+      { from: "root", to: "r3c", type: "parent" },
+      { from: "root", to: "r3d", type: "parent" },
+      { from: "root", to: "r4a", type: "parent" },
+      { from: "root", to: "r4b", type: "parent" },
+
+      // 关联：第一轮 → 第二轮（扩增）
+      { from: "r1a", to: "r2a", type: "assoc" },
+      { from: "r1a", to: "r2b", type: "assoc" },
+      { from: "r1b", to: "r2c", type: "assoc" },
+      { from: "r1b", to: "r2d", type: "assoc" },
+      { from: "r1c", to: "r2e", type: "assoc" },
+      { from: "r1c", to: "r2f", type: "assoc" },
+
+      // 关联：第二轮 → 第三轮（初筛：6→4，每节点仅 1 条上轮关联）
+      { from: "r2a", to: "r3a", type: "assoc" },
+      { from: "r2c", to: "r3b", type: "assoc" },
+      { from: "r2d", to: "r3c", type: "assoc" },
+      { from: "r2e", to: "r3d", type: "assoc" },
+      // r2b、r2f 未入选下一轮
+
+      // 关联：第三轮 → 第四轮（收敛：4→2，每节点仅 1 条上轮关联）
+      { from: "r3a", to: "r4a", type: "assoc" },
+      { from: "r3c", to: "r4b", type: "assoc" },
+      // r3b、r3d 未入选下一轮
+    ];
+
+    const RELATION_LABELS = {
+      all: "全部关系",
+      parent: "父子关系",
+      assoc: "关联关系",
+    };
+
+    const filters = {
+      relation: "all",
+      rounds: new Set(ROUND_OPTIONS),
+    };
+
+    const view = {
+      scale: 1,
+      panX: 0,
+      panY: 0,
+      min: 0.25,
+      max: 2,
+      step: 0.1,
+    };
+
+    const map = document.getElementById("map");
+    const stage = document.getElementById("stage");
+    const svg = document.getElementById("edges");
+    const zoomPctBtn = document.getElementById("zoom-pct");
+    const zoomPctText = document.getElementById("zoom-pct-text");
+    const zoomMenu = document.getElementById("zoom-menu");
+    const popover = document.getElementById("node-popover");
+    const popoverBody = document.getElementById("node-popover-body");
+    const nodeEls = {};
+    const ARROW_SIZE = 9;
+    const CLICK_MOVE_THRESHOLD = 4;
+    let activePopoverNodeId = null;
+
+    function snapPan(v) {
+      // 对齐到设备像素，避免 100% 下文字发糊
+      const dpr = window.devicePixelRatio || 1;
+      return Math.round(v * dpr) / dpr;
+    }
+
+    function applyViewTransform() {
+      view.panX = snapPan(view.panX);
+      view.panY = snapPan(view.panY);
+      if (Math.abs(view.scale - 1) < 0.0005) {
+        view.scale = 1;
+        stage.style.transform = `translate(${view.panX}px, ${view.panY}px)`;
+      } else {
+        stage.style.transform = `translate(${view.panX}px, ${view.panY}px) scale(${view.scale})`;
+      }
+      zoomPctText.textContent = Math.round(view.scale * 100) + "%";
+      zoomMenu.querySelectorAll(".filter-option").forEach((opt) => {
+        const z = Number(opt.dataset.zoom);
+        opt.classList.toggle("active", Math.abs(z - view.scale) < 0.001);
+      });
+      if (activePopoverNodeId && nodeEls[activePopoverNodeId]) {
+        positionPopover(nodeEls[activePopoverNodeId]);
+      }
+    }
+
+    function setZoom(next, anchorClientX, anchorClientY) {
+      const prev = view.scale;
+      const scale = Math.min(view.max, Math.max(view.min, next));
+      const rect = map.getBoundingClientRect();
+      const ax = (anchorClientX ?? rect.left + rect.width / 2) - rect.left;
+      const ay = (anchorClientY ?? rect.top + rect.height / 2) - rect.top;
+      const worldX = (ax - view.panX) / prev;
+      const worldY = (ay - view.panY) / prev;
+      view.scale = scale;
+      view.panX = ax - worldX * scale;
+      view.panY = ay - worldY * scale;
+      applyViewTransform();
+    }
+
+    function getContentBounds() {
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      let any = false;
+      nodes.forEach((n) => {
+        if (!isNodeVisible(n)) return;
+        const el = nodeEls[n.id];
+        if (!el) return;
+        any = true;
+        const w = el.offsetWidth || 168;
+        const h = el.offsetHeight || 56;
+        minX = Math.min(minX, n.x);
+        minY = Math.min(minY, n.y);
+        maxX = Math.max(maxX, n.x + w);
+        maxY = Math.max(maxY, n.y + h);
+      });
+      if (!any) return null;
+      return { minX, minY, maxX, maxY, width: maxX - minX, height: maxY - minY };
+    }
+
+    function fitView() {
+      const bounds = getContentBounds();
+      if (!bounds) return;
+      const pad = 80;
+      const vw = map.clientWidth;
+      const vh = map.clientHeight;
+      const scale = Math.min(
+        view.max,
+        Math.max(view.min, Math.min((vw - pad * 2) / bounds.width, (vh - pad * 2) / bounds.height))
+      );
+      view.scale = scale;
+      view.panX = (vw - bounds.width * scale) / 2 - bounds.minX * scale;
+      view.panY = (vh - bounds.height * scale) / 2 - bounds.minY * scale;
+      applyViewTransform();
+    }
+
+    function centerView() {
+      const bounds = getContentBounds();
+      if (!bounds) return;
+      const cx = (bounds.minX + bounds.maxX) / 2;
+      const cy = (bounds.minY + bounds.maxY) / 2;
+      view.panX = map.clientWidth / 2 - cx * view.scale;
+      view.panY = map.clientHeight / 2 - cy * view.scale;
+      applyViewTransform();
+    }
+
+    function getSelectedNode() {
+      return nodes.find((n) => n.selected) || (activePopoverNodeId ? getNodeById(activePopoverNodeId) : null);
+    }
+
+    /** 100% 视图，并把当前选中节点放到合适位置（略偏左上的舒适视区） */
+    function focusSelectedAt100() {
+      const node = getSelectedNode();
+      if (!node) {
+        // 没有选中时退回整体居中 + 100%
+        view.scale = 1;
+        centerView();
+        applyViewTransform();
+        return;
+      }
+      const el = nodeEls[node.id];
+      if (!el) return;
+
+      view.scale = 1;
+      const nw = el.offsetWidth || 168;
+      const nh = el.offsetHeight || 56;
+      // 节点落在视口约 35% / 40% 处，避免贴边
+      view.panX = map.clientWidth * 0.35 - (node.x + nw / 2);
+      view.panY = map.clientHeight * 0.4 - (node.y + nh / 2);
+      applyViewTransform();
+
+      if (activePopoverNodeId === node.id) {
+        requestAnimationFrame(() => positionPopover(el));
+      }
+    }
+
+    function setSelectedNode(nodeId) {
+      nodes.forEach((n) => {
+        n.selected = n.id === nodeId;
+        const el = nodeEls[n.id];
+        if (el) el.classList.toggle("selected", n.selected);
+      });
+      drawEdges();
+    }
+
+    function clearSelectedNode() {
+      nodes.forEach((n) => {
+        n.selected = false;
+        const el = nodeEls[n.id];
+        if (el) el.classList.remove("selected");
+      });
+      drawEdges();
+    }
+
+    /** 选中节点直接相连的上下游边：父子 + 关联 */
+    function isEdgeRelatedToSelection(edge, selectedId) {
+      if (!selectedId) return false;
+      return edge.from === selectedId || edge.to === selectedId;
+    }
+
+    function isMapFullscreen() {
+      const fsEl = document.fullscreenElement || document.webkitFullscreenElement;
+      return fsEl === map;
+    }
+
+    function updateFullscreenButton() {
+      const btn = document.getElementById("zoom-fullscreen");
+      if (!btn) return;
+      const on = isMapFullscreen();
+      btn.classList.toggle("is-fullscreen", on);
+      btn.setAttribute("aria-label", on ? "退出全屏" : "全屏");
+      btn.setAttribute("title", on ? "退出全屏" : "全屏");
+      btn.setAttribute("aria-pressed", on ? "true" : "false");
+    }
+
+    async function toggleMapFullscreen() {
+      try {
+        if (isMapFullscreen()) {
+          if (document.exitFullscreen) await document.exitFullscreen();
+          else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+        } else {
+          if (map.requestFullscreen) await map.requestFullscreen();
+          else if (map.webkitRequestFullscreen) map.webkitRequestFullscreen();
+        }
+      } catch (_) {
+        /* 用户手势被拒绝或浏览器不支持时静默忽略 */
+      }
+      updateFullscreenButton();
+    }
+
+    function setupZoomControls() {
+      document.getElementById("zoom-in").addEventListener("click", () => {
+        // 优先跳到更高的常用倍数
+        const next = ZOOM_PRESETS.find((z) => z > view.scale + 0.001) ?? Math.min(view.max, view.scale + view.step);
+        setZoom(next);
+      });
+      document.getElementById("zoom-out").addEventListener("click", () => {
+        const prevs = ZOOM_PRESETS.filter((z) => z < view.scale - 0.001);
+        const next = prevs.length ? prevs[prevs.length - 1] : Math.max(view.min, view.scale - view.step);
+        setZoom(next);
+      });
+      document.getElementById("zoom-fullscreen").addEventListener("click", toggleMapFullscreen);
+      document.getElementById("zoom-center").addEventListener("click", focusSelectedAt100);
+      document.addEventListener("fullscreenchange", () => {
+        updateFullscreenButton();
+        requestAnimationFrame(() => {
+          applyViewTransform();
+          if (activePopoverNodeId && nodeEls[activePopoverNodeId]) {
+            positionPopover(nodeEls[activePopoverNodeId]);
+          }
+        });
+      });
+      document.addEventListener("webkitfullscreenchange", updateFullscreenButton);
+      updateFullscreenButton();
+
+      zoomPctBtn.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        const open = zoomMenu.classList.toggle("open");
+        zoomPctBtn.setAttribute("aria-expanded", open ? "true" : "false");
+      });
+
+      zoomMenu.querySelectorAll(".filter-option").forEach((opt) => {
+        opt.addEventListener("click", (ev) => {
+          ev.stopPropagation();
+          setZoom(Number(opt.dataset.zoom));
+          zoomMenu.classList.remove("open");
+          zoomPctBtn.setAttribute("aria-expanded", "false");
+        });
+      });
+
+      map.addEventListener("wheel", (ev) => {
+        if (ev.target.closest(".filter-bar, .zoom-bar, .edge-legend, .node-popover")) return;
+        ev.preventDefault();
+        const delta = ev.deltaY > 0 ? -view.step : view.step;
+        setZoom(view.scale + delta, ev.clientX, ev.clientY);
+      }, { passive: false });
+    }
+
+    function renderNodes() {
+      nodes.forEach((n) => {
+        const el = document.createElement("div");
+        el.className = "node" + (n.selected ? " selected" : "");
+        el.id = "node-" + n.id;
+        el.dataset.id = n.id;
+        el.style.left = n.x + "px";
+        el.style.top = n.y + "px";
+        el.innerHTML = `
+          <div class="node-chip">${ICON_Y}<span class="node-id">${n.label}</span></div>
+          ${n.sub ? `<div class="node-type">${n.sub}</div>` : ""}
+        `;
+        stage.appendChild(el);
+        nodeEls[n.id] = el;
+        enableDrag(el, n);
+      });
+    }
+
+    function isNodeVisible(n) {
+      if (!n.round) return true;
+      return filters.rounds.has(n.round);
+    }
+
+    function applyFilters() {
+      nodes.forEach((n) => {
+        const el = nodeEls[n.id];
+        if (!el) return;
+        el.classList.toggle("hidden", !isNodeVisible(n));
+      });
+      drawEdges();
+      renderRoundTags();
+    }
+
+    function port(el, side) {
+      const y = el.offsetTop + el.offsetHeight / 2;
+      const x = side === "right" ? el.offsetLeft + el.offsetWidth : el.offsetLeft;
+      return { x, y };
+    }
+
+    function curve(a, b) {
+      const dx = Math.max(48, (b.x - a.x) * 0.48);
+      return `M ${a.x} ${a.y} C ${a.x + dx} ${a.y}, ${b.x - dx} ${b.y}, ${b.x} ${b.y}`;
+    }
+
+    function horizontalArrow(tipX, tipY, size) {
+      const baseX = tipX - size;
+      const h = size * 0.55;
+      return `M ${tipX} ${tipY} L ${baseX} ${tipY - h} L ${baseX} ${tipY + h} Z`;
+    }
+
+    function drawEdges() {
+      const bounds = getContentBounds() || { minX: 0, minY: 0, maxX: 1200, maxY: 800 };
+      const pad = 200;
+      const w = Math.ceil(Math.max(bounds.maxX + pad, 1200));
+      const h = Math.ceil(Math.max(bounds.maxY + pad, 800));
+
+      svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
+      svg.setAttribute("width", String(w));
+      svg.setAttribute("height", String(h));
+      svg.style.width = w + "px";
+      svg.style.height = h + "px";
+
+      const selectedId = nodes.find((n) => n.selected)?.id || null;
+      svg.classList.toggle("has-selection", Boolean(selectedId));
+
+      const parts = [];
+      // 每个目标节点只保留一个水平箭头；优先高亮边，其次父子边
+      const arrowByTarget = new Map();
+
+      edges.forEach((e) => {
+        if (filters.relation !== "all" && e.type !== filters.relation) return;
+
+        const fromNode = nodes.find((n) => n.id === e.from);
+        const toNode = nodes.find((n) => n.id === e.to);
+        if (!isNodeVisible(fromNode) || !isNodeVisible(toNode)) return;
+
+        const fromEl = nodeEls[e.from];
+        const toEl = nodeEls[e.to];
+        if (!fromEl || !toEl || fromEl.classList.contains("hidden") || toEl.classList.contains("hidden")) return;
+
+        const from = port(fromEl, "right");
+        const tip = port(toEl, "left");
+        // 线段止于箭头底边，不进入节点；终点水平对齐端口
+        const lineEnd = { x: tip.x - ARROW_SIZE, y: tip.y };
+        const cls = e.type === "assoc" ? "assoc" : "parent";
+        const related = isEdgeRelatedToSelection(e, selectedId);
+        const hi = related ? " highlight" : "";
+
+        parts.push(`<path class="line ${cls}${hi}" d="${curve(from, lineEnd)}" />`);
+
+        const prev = arrowByTarget.get(e.to);
+        const rank = (edge, isHi) => (isHi ? 2 : 0) + (edge.type === "parent" ? 1 : 0);
+        if (!prev || rank(e, related) > prev.rank) {
+          arrowByTarget.set(e.to, { tip, type: e.type, highlight: related, rank: rank(e, related) });
+        }
+      });
+
+      arrowByTarget.forEach(({ tip, type, highlight }) => {
+        const cls = type === "assoc" ? "assoc" : "parent";
+        const hi = highlight ? " highlight" : "";
+        parts.push(`<path class="arrow ${cls}${hi}" d="${horizontalArrow(tip.x, tip.y, ARROW_SIZE)}" />`);
+      });
+
+      svg.innerHTML = parts.join("");
+    }
+
+    function renderRoundTags() {
+      const wrap = document.getElementById("round-tags");
+      wrap.innerHTML = ROUND_OPTIONS
+        .filter((r) => filters.rounds.has(r))
+        .map((r) => `
+          <span class="filter-tag" data-round="${r}">
+            ${r}
+            <button type="button" data-remove="${r}" aria-label="移除 ${r}">×</button>
+          </span>
+        `).join("");
+
+      wrap.querySelectorAll("[data-remove]").forEach((btn) => {
+        btn.addEventListener("click", (ev) => {
+          ev.stopPropagation();
+          filters.rounds.delete(btn.dataset.remove);
+          applyFilters();
+        });
+      });
+
+      document.querySelectorAll("#round-menu .filter-option").forEach((opt) => {
+        opt.classList.toggle("active", filters.rounds.has(opt.dataset.round));
+      });
+    }
+
+    function setupFilters() {
+      const relationTrigger = document.getElementById("relation-trigger");
+      const relationMenu = document.getElementById("relation-menu");
+      const relationLabel = document.getElementById("relation-label");
+      const roundTrigger = document.getElementById("round-trigger");
+      const roundMenu = document.getElementById("round-menu");
+
+      relationTrigger.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        relationMenu.classList.toggle("open");
+        roundMenu.classList.remove("open");
+        zoomMenu.classList.remove("open");
+      });
+
+      roundTrigger.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        roundMenu.classList.toggle("open");
+        relationMenu.classList.remove("open");
+        zoomMenu.classList.remove("open");
+      });
+
+      relationMenu.querySelectorAll(".filter-option").forEach((opt) => {
+        opt.addEventListener("click", () => {
+          filters.relation = opt.dataset.value;
+          relationLabel.textContent = RELATION_LABELS[filters.relation];
+          relationMenu.querySelectorAll(".filter-option").forEach((o) => {
+            o.classList.toggle("active", o.dataset.value === filters.relation);
+          });
+          relationMenu.classList.remove("open");
+          drawEdges();
+        });
+      });
+
+      roundMenu.querySelectorAll(".filter-option").forEach((opt) => {
+        opt.addEventListener("click", () => {
+          const r = opt.dataset.round;
+          if (filters.rounds.has(r)) filters.rounds.delete(r);
+          else filters.rounds.add(r);
+          applyFilters();
+        });
+      });
+
+      document.addEventListener("click", () => {
+        relationMenu.classList.remove("open");
+        roundMenu.classList.remove("open");
+        zoomMenu.classList.remove("open");
+        zoomPctBtn.setAttribute("aria-expanded", "false");
+      });
+
+      document.getElementById("filter-bar").addEventListener("click", (ev) => {
+        ev.stopPropagation();
+      });
+
+      document.querySelector(".zoom-bar").addEventListener("click", (ev) => {
+        ev.stopPropagation();
+      });
+
+      renderRoundTags();
+    }
+
+    function enableDrag(el, data) {
+      let dragging = false;
+      let moved = false;
+      let openPopoverOnRelease = false;
+      let startX = 0;
+      let startY = 0;
+      let originX = 0;
+      let originY = 0;
+
+      const onPointerDown = (ev) => {
+        if (ev.button !== undefined && ev.button !== 0) return;
+        dragging = true;
+        moved = false;
+        // 仅点击名称 chip 时，释放后才打开浮窗
+        openPopoverOnRelease = Boolean(ev.target.closest(".node-chip"));
+        el.classList.add("dragging");
+        el.setPointerCapture(ev.pointerId);
+        startX = ev.clientX;
+        startY = ev.clientY;
+        originX = data.x;
+        originY = data.y;
+        // 按下即激活节点；外围点击不打开浮窗
+        setSelectedNode(data.id);
+        if (!openPopoverOnRelease) hidePopover();
+        ev.preventDefault();
+        ev.stopPropagation();
+      };
+
+      const onPointerMove = (ev) => {
+        if (!dragging) return;
+        const screenDx = ev.clientX - startX;
+        const screenDy = ev.clientY - startY;
+        if (!moved && Math.hypot(screenDx, screenDy) > CLICK_MOVE_THRESHOLD) {
+          moved = true;
+          openPopoverOnRelease = false;
+          hidePopover();
+        }
+        if (!moved) return;
+        const dx = screenDx / view.scale;
+        const dy = screenDy / view.scale;
+        data.x = originX + dx;
+        data.y = originY + dy;
+        el.style.left = data.x + "px";
+        el.style.top = data.y + "px";
+        drawEdges();
+      };
+
+      const onPointerUp = (ev) => {
+        if (!dragging) return;
+        dragging = false;
+        el.classList.remove("dragging");
+        data.x = Math.round(data.x);
+        data.y = Math.round(data.y);
+        el.style.left = data.x + "px";
+        el.style.top = data.y + "px";
+        try { el.releasePointerCapture(ev.pointerId); } catch (_) {}
+        drawEdges();
+
+        // 点击 chip 并释放（非拖拽）→ 打开浮窗
+        if (!moved && openPopoverOnRelease) {
+          showPopover(data, el);
+        }
+        openPopoverOnRelease = false;
+      };
+
+      el.addEventListener("pointerdown", onPointerDown);
+      el.addEventListener("pointermove", onPointerMove);
+      el.addEventListener("pointerup", onPointerUp);
+      el.addEventListener("pointercancel", onPointerUp);
+    }
+
+    function getNodeById(id) {
+      return nodes.find((n) => n.id === id);
+    }
+
+    function relatedNodes(nodeId, type, direction) {
+      return edges
+        .filter((e) => e.type === type && (direction === "in" ? e.to === nodeId : e.from === nodeId))
+        .map((e) => getNodeById(direction === "in" ? e.from : e.to))
+        .filter(Boolean);
+    }
+
+    function renderTag(label) {
+      return `<span class="pop-tag">${ICON_Y}<span>${label}</span></span>`;
+    }
+
+    function buildPopoverDetail(node) {
+      const meta = node.meta || {};
+      const parents = relatedNodes(node.id, "parent", "in");
+      const prevRound = relatedNodes(node.id, "assoc", "in");
+      const roundText = node.round || "—";
+
+      const parentsHtml = parents.length
+        ? `<div class="pop-tags">${parents.map((n) => renderTag(n.label)).join("")}</div>`
+        : `<span class="pop-value muted">—</span>`;
+
+      const prevHtml = prevRound.length
+        ? `<div class="pop-tags">${prevRound.map((n) => renderTag(n.label)).join("")}</div>`
+        : `<span class="pop-value muted">—</span>`;
+
+      const antigenHtml = meta.antigen
+        ? `<div class="pop-tags">${renderTag(meta.antigen)}</div>`
+        : `<span class="pop-value muted">—</span>`;
+
+      return `
+        <div class="pop-row">
+          <div class="pop-label">名称</div>
+          <div class="pop-value"><span class="pop-name">${ICON_Y}<span>${node.label}</span></span></div>
+        </div>
+        <div class="pop-row">
+          <div class="pop-label">对象类型</div>
+          <div class="pop-value">${meta.objectType || "—"}</div>
+        </div>
+        <div class="pop-row">
+          <div class="pop-label">编号</div>
+          <div class="pop-value">${meta.serial || "—"}</div>
+        </div>
+        <div class="pop-row">
+          <div class="pop-label">项目</div>
+          <div class="pop-value">${meta.project || "—"}</div>
+        </div>
+        <div class="pop-row">
+          <div class="pop-label">创建人</div>
+          <div class="pop-value">${meta.creator || "—"}</div>
+        </div>
+        <div class="pop-row">
+          <div class="pop-label">创建时间</div>
+          <div class="pop-value">${meta.createdAt || "—"}</div>
+        </div>
+        <div class="pop-row">
+          <div class="pop-label">抗原</div>
+          <div class="pop-value">${antigenHtml}</div>
+        </div>
+        <div class="pop-row">
+          <div class="pop-label">直接亲本</div>
+          <div class="pop-value">${parentsHtml}</div>
+        </div>
+        <div class="pop-row">
+          <div class="pop-label">上轮分子</div>
+          <div class="pop-value">${prevHtml}</div>
+        </div>
+        <div class="pop-row">
+          <div class="pop-label">轮次/阶段</div>
+          <div class="pop-value">${roundText}</div>
+        </div>
+        <div class="pop-row">
+          <div class="pop-label">Isotype</div>
+          <div class="pop-value">${meta.isotype || "—"}</div>
+        </div>
+        <div class="pop-row">
+          <div class="pop-label">PTM Liabilities</div>
+          <div class="pop-value">${meta.ptm || "—"}</div>
+        </div>
+        <div class="pop-row">
+          <div class="pop-label">Proteolytic Site Prediction</div>
+          <div class="pop-value">${meta.proteolytic || "—"}</div>
+        </div>
+        <div class="pop-row">
+          <div class="pop-label">MW(Da)</div>
+          <div class="pop-value">${meta.mw || "—"}</div>
+        </div>
+      `;
+    }
+
+    function positionPopover(nodeEl) {
+      const mapRect = map.getBoundingClientRect();
+      const nodeRect = nodeEl.getBoundingClientRect();
+      const popW = popover.offsetWidth || 320;
+      const popH = popover.offsetHeight || 360;
+      const gap = 12;
+      const margin = 16;
+
+      // 水平：相对节点左对齐，必要时夹紧到画布内
+      let left = nodeRect.left - mapRect.left;
+      if (left + popW > mapRect.width - margin) {
+        left = mapRect.width - popW - margin;
+      }
+      if (left < margin) left = margin;
+
+      // 垂直：默认在节点下方；下方不够再放到上方
+      const belowTop = nodeRect.bottom - mapRect.top + gap;
+      const aboveTop = nodeRect.top - mapRect.top - popH - gap;
+      const spaceBelow = mapRect.height - (nodeRect.bottom - mapRect.top) - margin;
+      let top;
+      if (spaceBelow >= popH + gap) {
+        top = belowTop;
+      } else if (aboveTop >= margin) {
+        top = aboveTop;
+      } else {
+        // 上下都不够：尽量放下方并夹紧，浮窗自身可滚动
+        top = Math.min(belowTop, Math.max(margin, mapRect.height - popH - margin));
+      }
+
+      popover.style.left = Math.round(left) + "px";
+      popover.style.top = Math.round(top) + "px";
+    }
+
+    function showPopover(node, nodeEl) {
+      activePopoverNodeId = node.id;
+      popoverBody.innerHTML = buildPopoverDetail(node);
+      popover.classList.add("open");
+      // 先显示再量尺寸定位
+      requestAnimationFrame(() => positionPopover(nodeEl));
+    }
+
+    function hidePopover() {
+      activePopoverNodeId = null;
+      popover.classList.remove("open");
+    }
+
+    function setupPopoverDismiss() {
+      map.addEventListener("pointerdown", (ev) => {
+        if (!popover.classList.contains("open")) return;
+        if (ev.target.closest(".node-popover, .node")) return;
+        hidePopover();
+        clearSelectedNode();
+      });
+
+      // 缩放/平移后若仍打开，跟随当前节点重定位
+      const repositionIfOpen = () => {
+        if (!activePopoverNodeId) return;
+        const el = nodeEls[activePopoverNodeId];
+        if (el) positionPopover(el);
+      };
+      window.addEventListener("resize", () => {
+        drawEdges();
+        repositionIfOpen();
+      });
+    }
+
+    function setupPan() {
+      let panning = false;
+      let sx = 0, sy = 0, ox = 0, oy = 0;
+
+      map.addEventListener("pointerdown", (ev) => {
+        if (ev.button !== 0) return;
+        if (ev.target.closest(".node, .filter-bar, .zoom-bar, .edge-legend, .filter-menu, .zoom-menu, .node-popover")) return;
+        hidePopover();
+        clearSelectedNode();
+        panning = true;
+        map.setPointerCapture(ev.pointerId);
+        sx = ev.clientX;
+        sy = ev.clientY;
+        ox = view.panX;
+        oy = view.panY;
+        map.style.cursor = "grabbing";
+      });
+
+      map.addEventListener("pointermove", (ev) => {
+        if (!panning) return;
+        view.panX = ox + (ev.clientX - sx);
+        view.panY = oy + (ev.clientY - sy);
+        applyViewTransform();
+      });
+
+      const endPan = (ev) => {
+        if (!panning) return;
+        panning = false;
+        map.style.cursor = "";
+        try { map.releasePointerCapture(ev.pointerId); } catch (_) {}
+      };
+
+      map.addEventListener("pointerup", endPan);
+      map.addEventListener("pointercancel", endPan);
+    }
+
+    renderNodes();
+    setupFilters();
+    setupZoomControls();
+    setupPan();
+    setupPopoverDismiss();
+
+    // 初始 100%，并把内容大致放到视野中
+    requestAnimationFrame(() => {
+      drawEdges();
+      centerView();
+      applyViewTransform();
+    });
+
+    window.addEventListener("load", () => {
+      drawEdges();
+      centerView();
+    });
+  </script>
+</body>
+</html>
