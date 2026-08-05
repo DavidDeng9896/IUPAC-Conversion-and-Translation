@@ -160,7 +160,8 @@
       box-shadow: 0 2px 6px rgba(75,120,240,.35); padding: 0;
     }
     .expand-btn:hover { background: #3d66d8; }
-    .expand-btn.show { display: flex; }
+    /* 仅在节点 hover 且处于可穿透边界时显示 */
+    .node:hover .expand-btn.show { display: flex; }
     .expand-btn.fwd { right: -11px; }
     .expand-btn.back { left: -11px; }
     .zoom-bar {
@@ -583,34 +584,22 @@
 
   state.fieldSettings = loadFieldSettings();
 
-  function getNeighbors(id) {
-    const list = [];
-    edges.forEach((e) => {
-      if (e.from === id) list.push({ id: e.to, dir: 1, edge: e });
-      else if (e.to === id) list.push({ id: e.from, dir: -1, edge: e });
-    });
-    return list;
-  }
-
-  function layerDelta(fromId, toId, edge, dir) {
-    if (edge.type === "parent") {
-      if (dir === 1) return edge.from === fromId ? 1 : -1;
-      return edge.to === fromId ? -1 : 1;
-    }
-    return edge.from === fromId ? 1 : -1;
-  }
-
   function computeLayers() {
+    // 统一逻辑：沿出边 +1（后关联），沿入边 -1（前关联）；不区分父子/关联类型
     const layers = { [CENTER_ID]: 0 };
     const q = [CENTER_ID];
     while (q.length) {
       const cur = q.shift();
       const curLayer = layers[cur];
-      getNeighbors(cur).forEach(({ id, dir, edge }) => {
-        if (layers[id] !== undefined) return;
-        const delta = layerDelta(cur, id, edge, dir);
-        layers[id] = curLayer + (dir > 0 ? delta : -delta);
-        q.push(id);
+      edges.forEach((e) => {
+        if (e.from === cur && layers[e.to] === undefined) {
+          layers[e.to] = curLayer + 1;
+          q.push(e.to);
+        }
+        if (e.to === cur && layers[e.from] === undefined) {
+          layers[e.from] = curLayer - 1;
+          q.push(e.from);
+        }
       });
     }
     nodes.forEach((n) => { if (layers[n.id] === undefined) layers[n.id] = 99; });
@@ -629,10 +618,15 @@
     });
     visible.forEach((id) => {
       const L = layers[id];
-      getNeighbors(id).forEach(({ id: nid }) => {
-        const nL = layers[nid];
-        if (nL < -state.depthBack && L === -state.depthBack) frontierBack.add(id);
-        if (nL > state.depthFwd && L === state.depthFwd) frontierFwd.add(id);
+      edges.forEach((e) => {
+        if (e.from === id) {
+          const nL = layers[e.to];
+          if (nL > state.depthFwd && L === state.depthFwd) frontierFwd.add(id);
+        }
+        if (e.to === id) {
+          const nL = layers[e.from];
+          if (nL < -state.depthBack && L === -state.depthBack) frontierBack.add(id);
+        }
       });
     });
     state.visibleIds = visible;
@@ -1036,6 +1030,13 @@
         <input type="checkbox" data-type="${t}" ${filter.has(t) ? "checked" : ""} />
         <span>${t}</span>
       </label>`).join("");
+    list.querySelectorAll("input[data-type]").forEach((inp) => {
+      inp.addEventListener("change", () => {
+        if (!state.typeFilterDraft) state.typeFilterDraft = new Set(state.typeFilter);
+        if (inp.checked) state.typeFilterDraft.add(inp.dataset.type);
+        else state.typeFilterDraft.delete(inp.dataset.type);
+      });
+    });
   }
 
   function updateTypeFilterDot() {
