@@ -628,39 +628,84 @@
     return layers;
   }
 
+  /** 当前关系筛选下，边是否参与显示与连通判断 */
+  function edgeMatchesRelation(e) {
+    return state.relation === "all" || e.type === state.relation;
+  }
+
+  function isTypeVisible(n) {
+    if (!n) return false;
+    // 基准中心始终参与连通与显示
+    if (n.id === CENTER_ID) return true;
+    return state.typeFilter.has(n.objectType);
+  }
+
+  /** 在「类型+关系筛选后的子图」中，与中心有路径相连的节点（连通不区分方向） */
+  function computeConnectedToCenter() {
+    const connected = new Set([CENTER_ID]);
+    const q = [CENTER_ID];
+    while (q.length) {
+      const cur = q.shift();
+      edges.forEach((e) => {
+        if (!edgeMatchesRelation(e)) return;
+        let next = null;
+        if (e.from === cur) next = e.to;
+        else if (e.to === cur) next = e.from;
+        if (!next || connected.has(next)) return;
+        const n = nodeById[next];
+        if (!isTypeVisible(n)) return;
+        connected.add(next);
+        q.push(next);
+      });
+    }
+    return connected;
+  }
+
   function computeVisibility() {
     const layers = computeLayers();
+    const connected = computeConnectedToCenter();
     const visible = new Set();
     const frontierBack = new Set();
     const frontierFwd = new Set();
+
     nodes.forEach((n) => {
+      if (!isTypeVisible(n)) return;
+      // 与中心断连的（含因中间类型/关系被筛掉而断链）一律不显示
+      if (!connected.has(n.id)) return;
       const L = layers[n.id];
       if (L >= -state.depthBack && L <= state.depthFwd) visible.add(n.id);
     });
+
     visible.forEach((id) => {
       const L = layers[id];
       edges.forEach((e) => {
+        if (!edgeMatchesRelation(e)) return;
         if (e.from === id) {
-          const nL = layers[e.to];
-          if (nL > state.depthFwd && L === state.depthFwd) frontierFwd.add(id);
+          const nid = e.to;
+          const n = nodeById[nid];
+          const nL = layers[nid];
+          if (isTypeVisible(n) && connected.has(nid) && nL > state.depthFwd && L === state.depthFwd) {
+            frontierFwd.add(id);
+          }
         }
         if (e.to === id) {
-          const nL = layers[e.from];
-          if (nL < -state.depthBack && L === -state.depthBack) frontierBack.add(id);
+          const nid = e.from;
+          const n = nodeById[nid];
+          const nL = layers[nid];
+          if (isTypeVisible(n) && connected.has(nid) && nL < -state.depthBack && L === -state.depthBack) {
+            frontierBack.add(id);
+          }
         }
       });
     });
+
     state.visibleIds = visible;
     state.frontierBack = frontierBack;
     state.frontierFwd = frontierFwd;
   }
 
-  function isTypeVisible(n) {
-    return state.typeFilter.has(n.objectType);
-  }
-
   function isNodeShown(n) {
-    return state.visibleIds.has(n.id) && isTypeVisible(n);
+    return state.visibleIds.has(n.id);
   }
 
   function entityUrl(id) { return `https://example.com/entity/${id}`; }
