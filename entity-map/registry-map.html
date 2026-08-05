@@ -907,7 +907,10 @@
       if (!el.dataset.dragBound) enableDrag(el, n);
       return;
     }
-    el.className = "node" + (n.id === CENTER_ID ? " center" : "") + (shown ? "" : " hidden");
+    el.className = "node"
+      + (n.id === CENTER_ID ? " center" : "")
+      + (state.selectedId === n.id ? " selected" : "")
+      + (shown ? "" : " hidden");
     el.innerHTML = `
       <div class="node-chip">${getIcon(n.iconType)}<span class="node-id">${n.label}</span></div>
       ${buildNodeFieldsHtml(n)}
