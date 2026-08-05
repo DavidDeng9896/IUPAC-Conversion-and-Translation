@@ -880,8 +880,16 @@
     computeVisibility();
     autoLayout();
     nodes.forEach((n) => {
-      const el = nodeEls[n.id];
-      if (el) { el.style.left = n.x + "px"; el.style.top = n.y + "px"; }
+      let el = nodeEls[n.id];
+      if (!el) {
+        el = document.createElement("div");
+        el.id = "node-" + n.id;
+        el.dataset.id = n.id;
+        stage.appendChild(el);
+        nodeEls[n.id] = el;
+      }
+      el.style.left = n.x + "px";
+      el.style.top = n.y + "px";
       updateNodeEl(n);
     });
     drawEdges();
