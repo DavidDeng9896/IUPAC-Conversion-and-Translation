@@ -1,0 +1,1209 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>注册关系图 — 抗体研发谱系</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg-canvas: #f7f7f9;
+      --border-card: #d4d4d7;
+      --text-sub: #6b6b6d;
+      --blue-title: #4a6ef8;
+      --blue-selected: #7b92f0;
+      --blue-selected-bg: #f5f7ff;
+      --blue-icon: #4b78f0;
+      --chip: #e2e3e5;
+      --edge-parent: #C4D1C2;
+      --edge-assoc: #CED2D9;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      height: 100%; width: 100%; overflow: hidden;
+      font-family: "IBM Plex Sans", "Helvetica Neue", Helvetica, Arial, "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: var(--bg-canvas); -webkit-font-smoothing: antialiased;
+    }
+    .map {
+      position: relative; width: 100%; height: 100%; overflow: hidden;
+      background-color: var(--bg-canvas);
+      background-image: radial-gradient(circle, #d5d6d9 1.05px, transparent 1.2px);
+      background-size: 22px 22px; background-position: 8px 6px; touch-action: none;
+    }
+    .map:fullscreen, .map:-webkit-full-screen {
+      width: 100vw; height: 100vh;
+      background-color: var(--bg-canvas);
+      background-image: radial-gradient(circle, #d5d6d9 1.05px, transparent 1.2px);
+      background-size: 22px 22px; background-position: 8px 6px;
+    }
+    .stage { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+    .filter-bar {
+      position: absolute; top: 16px; left: 16px; z-index: 40;
+      display: flex; align-items: center; gap: 8px; min-height: 40px;
+      padding: 6px 10px; background: #fff; border: 1px solid #e6e6e8;
+      border-radius: 8px; box-shadow: 0 2px 8px rgba(16,16,20,.08);
+      font-size: 13px; color: #2a2a2e; user-select: none;
+    }
+    .filter-dropdown { position: relative; }
+    .filter-trigger {
+      display: inline-flex; align-items: center; gap: 6px; height: 28px;
+      padding: 0 8px; border: none; background: transparent; font: inherit;
+      color: inherit; cursor: pointer; border-radius: 4px; white-space: nowrap;
+    }
+    .filter-trigger:hover { background: #f3f4f6; }
+    .filter-trigger svg { width: 12px; height: 12px; color: #6b6b6f; flex-shrink: 0; }
+    .filter-menu {
+      display: none; position: absolute; top: calc(100% + 6px); left: 0;
+      min-width: 132px; padding: 4px; background: #fff; border: 1px solid #e6e6e8;
+      border-radius: 8px; box-shadow: 0 6px 18px rgba(16,16,20,.12); z-index: 50;
+    }
+    .filter-menu.open { display: block; }
+    .filter-option {
+      display: block; width: 100%; text-align: left; padding: 8px 10px;
+      border: none; background: transparent; font: inherit; color: #2a2a2e;
+      border-radius: 5px; cursor: pointer;
+    }
+    .filter-option:hover { background: #f3f4f6; }
+    .filter-option.active { color: #3b5bdb; background: #eef2ff; font-weight: 600; }
+    .filter-divider { width: 1px; height: 20px; background: #e6e6e8; flex-shrink: 0; }
+    .filter-icon-btn {
+      position: relative; display: inline-flex; align-items: center; justify-content: center;
+      width: 28px; height: 28px; border: none; background: transparent;
+      color: #5a5a5e; border-radius: 4px; cursor: pointer; padding: 0;
+    }
+    .filter-icon-btn:hover { background: #f3f4f6; color: #2a2a2e; }
+    .filter-icon-btn svg { width: 16px; height: 16px; }
+    .filter-dot {
+      position: absolute; top: 4px; right: 4px; width: 7px; height: 7px;
+      background: var(--blue-icon); border-radius: 50%; border: 1.5px solid #fff;
+      display: none;
+    }
+    .filter-icon-btn.has-filter .filter-dot { display: block; }
+    .settings-btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 28px; height: 28px; border: none; background: transparent;
+      color: #5a5a5e; border-radius: 4px; cursor: pointer; padding: 0;
+    }
+    .settings-btn:hover { background: #f3f4f6; color: #2a2a2e; }
+    .settings-btn svg { width: 16px; height: 16px; }
+    .type-filter-popover {
+      display: none; position: absolute; top: calc(100% + 6px); left: 0;
+      width: 280px; background: #fff; border: 1px solid #e6e6e8;
+      border-radius: 8px; box-shadow: 0 6px 18px rgba(16,16,20,.12); z-index: 55;
+      padding: 12px;
+    }
+    .type-filter-popover.open { display: flex; flex-direction: column; gap: 10px; }
+    .type-filter-popover h4 { font-size: 13px; font-weight: 600; color: #2a2a2e; }
+    .type-search {
+      width: 100%; height: 30px; padding: 0 10px; border: 1px solid #e0e0e4;
+      border-radius: 6px; font: inherit; font-size: 12px;
+    }
+    .type-search:focus { outline: none; border-color: var(--blue-selected); }
+    .type-check-list {
+      max-height: 220px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px;
+    }
+    .type-check-item {
+      display: flex; align-items: center; gap: 8px; padding: 4px 2px;
+      font-size: 12px; cursor: pointer;
+    }
+    .type-check-item input { accent-color: var(--blue-icon); }
+    .type-filter-footer { display: flex; justify-content: flex-end; gap: 8px; padding-top: 4px; }
+    .btn {
+      height: 28px; padding: 0 12px; border-radius: 6px; font: inherit;
+      font-size: 12px; cursor: pointer; border: 1px solid #e0e0e4; background: #fff;
+    }
+    .btn:hover { background: #f3f4f6; }
+    .btn-primary { background: var(--blue-icon); color: #fff; border-color: var(--blue-icon); }
+    .btn-primary:hover { background: #3d66d8; }
+    .edges { position: absolute; left: 0; top: 0; pointer-events: none; overflow: visible; z-index: 1; }
+    .edges path.line { fill: none; stroke-width: 1.6; stroke-linecap: round; }
+    .edges path.line.parent { stroke: var(--edge-parent); }
+    .edges path.line.assoc { stroke: var(--edge-assoc); stroke-dasharray: 5 4; stroke-width: 1.5; }
+    .edges path.arrow.parent { fill: var(--edge-parent); stroke: none; }
+    .edges path.arrow.assoc { fill: var(--edge-assoc); stroke: none; }
+    .node {
+      position: absolute; background: #fff; border: 1px solid var(--border-card);
+      border-radius: 4px; padding: 8px 9px 9px;
+      box-shadow: 0 1px 2px rgba(16,16,20,.05);
+      display: flex; flex-direction: column; align-items: flex-start; gap: 5px;
+      z-index: 2; cursor: grab; user-select: none; min-width: 168px;
+      touch-action: none; text-rendering: geometricPrecision;
+    }
+    .node.hidden { display: none; }
+    .node:active, .node.dragging {
+      cursor: grabbing; z-index: 20; box-shadow: 0 6px 18px rgba(16,16,20,.14);
+    }
+    .node.center {
+      border-color: var(--blue-selected); background: var(--blue-selected-bg);
+      box-shadow: 0 0 0 .5px rgba(72,111,251,.25);
+    }
+    .node.center .node-chip { background: #dfe3ec; }
+    .node.noperm { min-width: 120px; padding: 10px 12px; }
+    .node.noperm .noperm-text { font-size: 12px; color: #6b6b6d; line-height: 1.3; }
+    .node-chip {
+      display: inline-flex; align-items: center; gap: 5px; align-self: stretch;
+      background: var(--chip); border-radius: 3px; padding: 3px 8px 3px 5px;
+      min-height: 22px; max-width: 100%; cursor: pointer;
+    }
+    .node-chip .icon { flex-shrink: 0; width: 13px; height: 13px; color: var(--blue-icon); display: block; }
+    .node-id { font-size: 12px; font-weight: 600; color: var(--blue-title); line-height: 1.15; white-space: nowrap; }
+    .node-fields { font-size: 11px; color: var(--text-sub); line-height: 1.35; padding-left: 1px; }
+    .node-fields .field-line { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px; }
+    .expand-btn {
+      position: absolute; top: 50%; transform: translateY(-50%);
+      width: 22px; height: 22px; border-radius: 50%;
+      background: var(--blue-icon); color: #fff; border: none;
+      display: none; align-items: center; justify-content: center;
+      cursor: pointer; z-index: 5; font-size: 11px; font-weight: 700;
+      box-shadow: 0 2px 6px rgba(75,120,240,.35); padding: 0;
+    }
+    .expand-btn:hover { background: #3d66d8; }
+    .expand-btn.show { display: flex; }
+    .expand-btn.fwd { right: -11px; }
+    .expand-btn.back { left: -11px; }
+    .zoom-bar {
+      position: absolute; left: 26px; bottom: 26px;
+      display: flex; align-items: center; height: 40px;
+      background: #fff; border: 1px solid #e4e4e6; border-radius: 6px;
+      box-shadow: 0 1px 4px rgba(0,0,0,.08); z-index: 30;
+    }
+    .zoom-group { display: flex; align-items: center; height: 100%; position: relative; }
+    .zoom-btn {
+      width: 34px; height: 100%; display: flex; align-items: center; justify-content: center;
+      border: none; background: transparent; color: #2c2c30; cursor: pointer; padding: 0;
+    }
+    .zoom-btn:hover { background: #f3f4f6; }
+    .zoom-btn .fs-exit { display: none; }
+    .zoom-btn.is-fullscreen .fs-enter { display: none; }
+    .zoom-btn.is-fullscreen .fs-exit { display: block; }
+    .zoom-pct {
+      min-width: 52px; height: 100%; display: inline-flex; align-items: center;
+      justify-content: center; gap: 2px; border: none; background: transparent;
+      font-size: 13px; font-weight: 500; font-family: inherit; color: #1b1b1d;
+      font-variant-numeric: tabular-nums; user-select: none; cursor: pointer;
+      padding: 0 4px; border-radius: 4px;
+    }
+    .zoom-pct:hover { background: #f3f4f6; }
+    .zoom-pct svg { width: 10px; height: 10px; color: #6b6b6f; }
+    .zoom-menu {
+      display: none; position: absolute; left: 50%; bottom: calc(100% + 8px);
+      transform: translateX(-50%); min-width: 88px; padding: 4px;
+      background: #fff; border: 1px solid #e6e6e8; border-radius: 8px;
+      box-shadow: 0 6px 18px rgba(16,16,20,.12); z-index: 60;
+    }
+    .zoom-menu.open { display: block; }
+    .zoom-menu .filter-option { text-align: center; font-variant-numeric: tabular-nums; }
+    .zoom-divider { width: 1px; height: 22px; background: #e6e6e8; margin: 0 2px; }
+    .edge-legend {
+      position: absolute; right: 26px; bottom: 26px; z-index: 30;
+      display: flex; align-items: center; height: 40px; gap: 22px; padding: 0 16px;
+      background: #fff; border: 1px solid #e4e4e6; border-radius: 6px;
+      box-shadow: 0 1px 4px rgba(0,0,0,.08); user-select: none;
+    }
+    .legend-item { display: flex; flex-direction: row; align-items: center; gap: 6px; }
+    .legend-line { width: 18px; height: 2px; display: block; flex-shrink: 0; border-radius: 1px; }
+    .legend-line.parent { background: #C4D1C2; }
+    .legend-line.assoc {
+      background: repeating-linear-gradient(to right, #CED2D9 0 4px, transparent 4px 7px);
+    }
+    .legend-end { display: inline-flex; align-items: center; flex-shrink: 0; margin-left: 6px; }
+    .legend-end .legend-line { width: 14px; border-radius: 1px 0 0 1px; }
+    .legend-arrow {
+      width: 0; height: 0; border-top: 4px solid transparent;
+      border-bottom: 4px solid transparent; border-left: 6px solid #C4D1C2;
+      flex-shrink: 0; margin-left: -1px;
+    }
+    .legend-arrow.assoc { border-left-color: #CED2D9; }
+    .legend-item > span:not([class]) { font-size: 12px; color: #5a5a5e; line-height: 1; white-space: nowrap; }
+    .node-popover {
+      display: none; position: absolute; z-index: 50; width: 320px;
+      max-height: min(420px, calc(100% - 48px)); background: #fff;
+      border: 1px solid #e6e6e8; border-radius: 8px;
+      box-shadow: 0 8px 28px rgba(16,16,20,.14); overflow: hidden;
+      font-size: 13px; color: #2a2a2e; pointer-events: auto;
+    }
+    .node-popover.open { display: flex; flex-direction: column; }
+    .node-popover-body {
+      overflow-y: auto; padding: 14px 16px 16px;
+      display: flex; flex-direction: column; gap: 12px;
+    }
+    .pop-row { display: grid; grid-template-columns: 108px 1fr; gap: 10px; align-items: start; }
+    .pop-label { color: #6b6b6f; line-height: 22px; white-space: nowrap; }
+    .pop-value { color: #1b1b1d; line-height: 22px; word-break: break-all; }
+    .pop-value.muted { color: #9a9aa0; }
+    .pop-name {
+      display: inline-flex; align-items: center; gap: 6px;
+      color: var(--blue-title); font-weight: 600; cursor: pointer;
+    }
+    .pop-name .icon { width: 14px; height: 14px; color: var(--blue-icon); flex-shrink: 0; }
+    .modal-overlay {
+      display: none; position: fixed; inset: 0; background: rgba(16,16,20,.35);
+      z-index: 100; align-items: center; justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .settings-modal {
+      width: min(720px, calc(100vw - 48px)); max-height: calc(100vh - 48px);
+      background: #fff; border-radius: 10px; box-shadow: 0 12px 40px rgba(16,16,20,.2);
+      display: flex; flex-direction: column; overflow: hidden;
+    }
+    .settings-header {
+      padding: 16px 20px; border-bottom: 1px solid #ececee;
+      font-size: 15px; font-weight: 600;
+    }
+    .settings-body { flex: 1; overflow-y: auto; padding: 16px 20px; display: flex; flex-direction: column; gap: 20px; }
+    .settings-section h5 { font-size: 13px; font-weight: 600; margin-bottom: 10px; color: #2a2a2e; }
+    .settings-checks { display: flex; flex-wrap: wrap; gap: 8px 16px; }
+    .settings-checks label { display: flex; align-items: center; gap: 6px; font-size: 12px; cursor: pointer; }
+    .custom-fields-wrap { display: flex; gap: 16px; min-height: 180px; }
+    .custom-type-list {
+      width: 160px; flex-shrink: 0; border: 1px solid #e6e6e8; border-radius: 6px;
+      overflow-y: auto; max-height: 220px;
+    }
+    .custom-type-item {
+      padding: 8px 12px; font-size: 12px; cursor: pointer; border-bottom: 1px solid #f0f0f2;
+    }
+    .custom-type-item:hover { background: #f7f7f9; }
+    .custom-type-item.active { background: #eef2ff; color: #3b5bdb; font-weight: 600; }
+    .custom-field-checks { flex: 1; display: flex; flex-wrap: wrap; gap: 8px 16px; align-content: flex-start; }
+    .settings-footer {
+      padding: 12px 20px; border-top: 1px solid #ececee;
+      display: flex; justify-content: flex-end; gap: 8px;
+    }
+  </style>
+</head>
+<body>
+  <div class="map" id="map">
+    <div class="stage" id="stage">
+      <svg class="edges" id="edges" xmlns="http://www.w3.org/2000/svg"></svg>
+    </div>
+
+    <div class="filter-bar" id="filter-bar">
+      <div class="filter-dropdown" id="relation-dropdown">
+        <button class="filter-trigger" type="button" id="relation-trigger">
+          <span id="relation-label">全部关系</span>
+          <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4.5L6 7.5L9 4.5"/></svg>
+        </button>
+        <div class="filter-menu" id="relation-menu">
+          <button class="filter-option active" type="button" data-value="all">全部关系</button>
+          <button class="filter-option" type="button" data-value="parent">父子关系</button>
+          <button class="filter-option" type="button" data-value="assoc">关联关系</button>
+        </div>
+      </div>
+      <div class="filter-divider"></div>
+      <div class="filter-dropdown" id="type-filter-dropdown">
+        <button class="filter-icon-btn" type="button" id="type-filter-btn" title="筛选对象" aria-label="筛选对象">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M2 3.5h12"/><path d="M4 8h8"/><path d="M6.5 12.5h3"/>
+            <circle cx="5.5" cy="3.5" r="1.35" fill="currentColor" stroke="none"/>
+            <circle cx="10" cy="8" r="1.35" fill="currentColor" stroke="none"/>
+            <circle cx="8" cy="12.5" r="1.35" fill="currentColor" stroke="none"/>
+          </svg>
+          <span class="filter-dot"></span>
+        </button>
+        <div class="type-filter-popover" id="type-filter-popover">
+          <h4>筛选对象</h4>
+          <input class="type-search" type="search" id="type-search" placeholder="搜索对象类型…" />
+          <div class="type-check-list" id="type-check-list"></div>
+          <div class="type-filter-footer">
+            <button class="btn btn-primary" type="button" id="type-filter-confirm">确定</button>
+          </div>
+        </div>
+      </div>
+      <button class="settings-btn" type="button" id="settings-btn" title="节点字段显示设置" aria-label="节点字段显示设置">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="8" cy="8" r="2.2"/><path d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.2 3.2l1.4 1.4M11.4 11.4l1.4 1.4M3.2 12.8l1.4-1.4M11.4 4.6l1.4-1.4"/>
+        </svg>
+      </button>
+    </div>
+
+    <div class="zoom-bar">
+      <div class="zoom-group">
+        <button class="zoom-btn" type="button" id="zoom-out" aria-label="缩小">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M3 7h8"/></svg>
+        </button>
+        <div class="zoom-group" style="position:relative">
+          <button class="zoom-pct" type="button" id="zoom-pct">
+            <span id="zoom-pct-text">100%</span>
+            <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4.5L6 7.5L9 4.5"/></svg>
+          </button>
+          <div class="zoom-menu" id="zoom-menu">
+            <button class="filter-option" type="button" data-zoom="0.25">25%</button>
+            <button class="filter-option" type="button" data-zoom="0.5">50%</button>
+            <button class="filter-option" type="button" data-zoom="0.75">75%</button>
+            <button class="filter-option active" type="button" data-zoom="1">100%</button>
+            <button class="filter-option" type="button" data-zoom="1.25">125%</button>
+            <button class="filter-option" type="button" data-zoom="1.5">150%</button>
+            <button class="filter-option" type="button" data-zoom="2">200%</button>
+          </div>
+        </div>
+        <button class="zoom-btn" type="button" id="zoom-in" aria-label="放大">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M7 3v8M3 7h8"/></svg>
+        </button>
+      </div>
+      <div class="zoom-divider"></div>
+      <div class="zoom-group">
+        <button class="zoom-btn" type="button" id="zoom-fullscreen" aria-label="全屏" title="全屏">
+          <svg class="fs-icon fs-enter" width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 5.5V2h3.5M13 5.5V2H9.5M2 9.5V13h3.5M13 9.5V13H9.5"/></svg>
+          <svg class="fs-icon fs-exit" width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5.5 2v3.5H2M9.5 2v3.5H13M5.5 13v-3.5H2M9.5 13v-3.5H13"/></svg>
+        </button>
+        <button class="zoom-btn" type="button" id="zoom-fit" aria-label="适应画布" title="适应画布">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round">
+            <rect x="2" y="2" width="12" height="12" rx="1.5"/><path d="M5 8h6M8 5v6"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="edge-legend" aria-label="连线示意图">
+      <div class="legend-item">
+        <span class="legend-line parent"></span><span>父子关系</span>
+        <span class="legend-end"><span class="legend-line parent"></span><span class="legend-arrow"></span></span>
+      </div>
+      <div class="legend-item">
+        <span class="legend-line assoc"></span><span>关联关系</span>
+        <span class="legend-end"><span class="legend-line assoc"></span><span class="legend-arrow assoc"></span></span>
+      </div>
+    </div>
+
+    <div class="node-popover" id="node-popover"><div class="node-popover-body" id="node-popover-body"></div></div>
+  </div>
+
+  <div class="modal-overlay" id="settings-modal-overlay">
+    <div class="settings-modal" role="dialog" aria-label="节点字段显示设置">
+      <div class="settings-header">节点字段显示设置</div>
+      <div class="settings-body">
+        <div class="settings-section">
+          <h5>基础字段</h5>
+          <div class="settings-checks" id="basic-field-checks"></div>
+        </div>
+        <div class="settings-section">
+          <h5>对象自定义字段</h5>
+          <div class="custom-fields-wrap">
+            <div class="custom-type-list" id="custom-type-list"></div>
+            <div class="custom-field-checks" id="custom-field-checks"></div>
+          </div>
+        </div>
+      </div>
+      <div class="settings-footer">
+        <button class="btn" type="button" id="settings-reset">重置默认</button>
+        <button class="btn" type="button" id="settings-cancel">取消</button>
+        <button class="btn btn-primary" type="button" id="settings-confirm">确定</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+(function () {
+  "use strict";
+
+  const CENTER_ID = "ac-001";
+  const DEPTH_BACK = 3;
+  const DEPTH_FWD = 3;
+  const COL_GAP = 280;
+  const ROW_GAP = 72;
+  const START_X = 80;
+  const START_Y = 60;
+  const LS_KEY = "registry-map-field-settings";
+  const ZOOM_PRESETS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 2];
+  const ARROW_SIZE = 9;
+  const CLICK_MOVE_THRESHOLD = 4;
+  const POPOVER_HIDE_DELAY = 180;
+
+  const ICONS = {
+    AA: `<svg class="icon" viewBox="0 0 30 30" fill="currentColor" stroke="currentColor" stroke-width="1.5"><circle cx="16" cy="7" r="3" fill="currentColor" stroke="none"/><circle cx="7.5" cy="14.5" r="3.5" fill="currentColor" stroke="none"/><circle cx="16" cy="22" r="4" fill="currentColor" stroke="none"/><circle cx="24" cy="13" r="3" fill="currentColor" stroke="none"/><line x1="14" y1="9" x2="10" y2="12" stroke="currentColor" fill="none"/><line x1="16" y1="10" x2="16" y2="18" stroke="currentColor" fill="none"/><line x1="18" y1="9" x2="22" y2="12" stroke="currentColor" fill="none"/></svg>`,
+    Antibody: `<svg class="icon" viewBox="0 0 1024 1024" fill="currentColor"><path d="M188 297c-14-25-46-33-71-19s-33 46-19 71l124 216c14 25 46 33 71 19s33-46 19-71L188 297z"/><path d="M469 441L339 197c-13-25-45-35-70-21-25 13-35 45-21 70l130 244c2 4 3 9 3 13l-2 422c0 29 23 52 52 52s52-23 52-52l2-422c0-21-6-43-16-62zM858 297c14-25 46-33 71-19s33 46 19 71L824 565c-14 25-46 33-71 19s-33-46-19-71l124-216z"/><path d="M576 441l130-244c13-25 45-35 70-21 25 13 35 45 21 70L668 490c-2 4-3 9-3 13l2 422c0 29-23 52-52 52s-52-23-52-52l-2-422c0-21 5-43 15-62z"/></svg>`,
+    Cell: `<svg class="icon" viewBox="0 0 1029 1024" fill="currentColor"><path d="M519 2C238 2 10 230 10 511s228 509 509 509 509-228 509-509S800 2 519 2zm0 937C283 937 91 745 91 511S283 83 519 83s428 192 428 428-192 426-428 426z"/><circle cx="692" cy="574" r="124"/><circle cx="416" cy="254" r="92"/><circle cx="317" cy="562" r="111"/><circle cx="513" cy="781" r="47"/><circle cx="712" cy="319" r="51"/><circle cx="528" cy="446" r="43"/></svg>`,
+    DNA: `<svg class="icon" viewBox="0 0 1024 1024" fill="currentColor"><path d="M211 536a228 229 0 00277 277l99 98a34 34 0 1048-48l-15-15 229-229 15 15a34 34 0 1048-48l-99-99a228 229 0 00-277-277 228 228 0 00-61-216l-98-98a34 34 0 00-48 48l20 20-229 229-20-20a34 34 0 00-48 48l99 99zm554 0l35 35-229 229-35-35c-3-3-6-7-9-11l227-227c3 3 8 6 11 9zm-114-47c14 0 27 2 40 6l-196 196c-13-53 0-112 42-154a161 161 0 01114-48zm-115-115c0 102-93 179-194 159l191-191c2 10 3 21 3 32zm-78-145l30 30c5 5 9 11 14 17l-226 226c-6-4-11-9-17-14l-30-30 229-229z"/></svg>`,
+    Plasmid: `<svg class="icon" viewBox="0 0 1024 1024" fill="currentColor"><path d="M944 512c0-3.4 0-6.9-.1-10.3l62-1.5c-1.6-68-16.9-132.6-43.3-191.1L906 335c-27-60-67-113-117-154l5-103-13 20C703 47 611 18 512 18v62c-46 0-90 7-131 20l-19-59C219 87 103 197 50 337l-26-11 66 87 .9-.1c-5 23-9 47-11 72l-62-4c-.6 10-.9 20-.9 31 0 129 49 245 129 333l46-42C248 863 319 907 399 929l-16 60c41 11 85 17 130 17 66 0 128-13 185-36l-23-58c29-12 56-27 82-44l95 31-14-15C926 806 987 697 1002 573l-62-8c2-17 3-35 3-53z"/></svg>`,
+    Other: `<svg class="icon" viewBox="0 0 896 896" fill="currentColor"><path d="M816 112H80c-18 0-32 14-32 32v736c0 18 14 32 32 32h736c18 0 32-14 32-32V144c0-18-14-32-32-32zm-40 728H120V184h656v656zM428 400h184c4 0 8-4 8-8v-48c0-4-4-8-8-8H428c-4 0-8 4-8 8v48c0 4 4 8 8 8zm0 144h184c4 0 8-4 8-8v-48c0-4-4-8-8-8H428c-4 0-8 4-8 8v48c0 4 4 8 8 8zm0 144h184c4 0 8-4 8-8v-48c0-4-4-8-8-8H428c-4 0-8 4-8 8v48c0 4 4 8 8 8zM276 368a40 40 0 1080 0 40 40 0 10-80 0zm0 144a40 40 0 1080 0 40 40 0 10-80 0zm0 144a40 40 0 1080 0 40 40 0 10-80 0z"/></svg>`,
+    Compound: `<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 12h8M12 8v8"/></svg>`,
+    RNA: `<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M6 4c4 0 6 3 6 6s-2 6-6 6M18 8c-4 0-6 3-6 6s2 6 6 6"/></svg>`
+  };
+
+  const BASIC_FIELDS = [
+    { key: "name", label: "名称" },
+    { key: "project", label: "项目" },
+    { key: "department", label: "所属部门" },
+    { key: "status", label: "状态" },
+    { key: "objectType", label: "对象类型", defaultOn: true },
+    { key: "sharing", label: "数据分享" },
+    { key: "creator", label: "创建人" },
+    { key: "createdAt", label: "创建时间" }
+  ];
+
+  const CUSTOM_FIELDS_BY_TYPE = {
+    "Antibody Complex": ["Antigen Type", "Isotype", "MW(Da)", "PTM Liabilities"],
+    "Cell": ["Cell Line", "Passage", "Viability"],
+    "Chain DNA": ["Sequence Length", "Vector"],
+    "Chain (AA)": ["MW(Da)", "pI"],
+    "Antigen (AA)": ["Target", "Species"],
+    "Antibody-purified Protein": ["Purity", "Concentration"],
+    "Antigen_lot": ["Lot Number", "Expiry"],
+    "Sample Lot": ["Volume", "Storage"],
+    "Plasmid": ["Backbone", "Resistance"],
+    "Animal (SRA)": ["Strain", "Immunization"],
+    "Animal": ["Species", "Age"],
+    "项目代号": ["Phase", "Sponsor"],
+    "Parent Cell": ["Origin", "Notes"]
+  };
+
+  const ALL_OBJECT_TYPES = [
+    "Antibody Complex", "Cell", "Parent Cell", "Chain DNA", "Plasmid",
+    "Chain (AA)", "Antigen (AA)", "Antibody-purified Protein", "Antigen_lot",
+    "Sample Lot", "Animal (SRA)", "Animal", "项目代号", "Restricted"
+  ];
+
+  function makeNode(id, label, iconType, objectType, fields, extra) {
+    const opts = extra || {};
+    const { noPermission, ...customFields } = opts;
+    return {
+      id, label, iconType, objectType, x: 0, y: 0,
+      noPermission: !!noPermission,
+      fields: Object.assign({
+        name: label, project: "PDL1-01", department: "抗体研发部",
+        status: "有效", objectType, sharing: "团队内", creator: "zhang.wei",
+        createdAt: "2026-01-15 10:30:00"
+      }, fields),
+      custom: customFields
+    };
+  }
+
+  const nodes = [
+    makeNode("deep-dna-001", "DNA-DEEP-001", "DNA", "Chain DNA", {}, { Sequence_Length: "1200bp", Vector: "pUC19" }),
+    makeNode("dna-hc", "DNA-HC-001", "DNA", "Chain DNA", {}, { Sequence_Length: "720bp", Vector: "pUC57" }),
+    makeNode("dna-lc", "DNA-LC-001", "DNA", "Chain DNA", {}, { Sequence_Length: "690bp", Vector: "pUC57" }),
+    makeNode("plasmid-hc", "PL-HC-001", "Plasmid", "Plasmid", {}, { Backbone: "pcDNA3.1", Resistance: "Amp" }),
+    makeNode("plasmid-lc", "PL-LC-001", "Plasmid", "Plasmid", {}, { Backbone: "pcDNA3.1", Resistance: "Amp" }),
+    makeNode("parent-cell-001", "PCELL-001", "Cell", "Parent Cell", {}, { Origin: "CHO-K1", Notes: "主库" }),
+    makeNode("cell-001", "CELL-PDL1-001", "Cell", "Cell", {}, { Cell_Line: "CHO-S", Passage: "P12", Viability: "96%" }),
+    makeNode("animal-sra-001", "SRA-MOUSE-001", "Other", "Animal (SRA)", {}, { Strain: "BALB/c", Immunization: "PD-L1" }),
+    makeNode("ac-001", "CAND-PDL1-002", "Antibody", "Antibody Complex", { status: "候选" }, {
+      Antigen_Type: "PD-L1", Isotype: "IgG1", "MW(Da)": "145320", PTM_Liabilities: "0.62"
+    }),
+    makeNode("purified-001", "PUR-001", "AA", "Antibody-purified Protein", {}, { Purity: "98.5%", Concentration: "2.1 mg/mL" }),
+    makeNode("antigen-001", "AG-PDL1-001", "AA", "Antigen (AA)", {}, { Target: "PD-L1", Species: "Human" }),
+    makeNode("chain-aa-hc", "CH-AA-HC", "AA", "Chain (AA)", {}, { "MW(Da)": "49.2k", pI: "8.1" }),
+    makeNode("chain-aa-lc", "CH-AA-LC", "AA", "Chain (AA)", {}, { "MW(Da)": "23.4k", pI: "6.2" }),
+    makeNode("chain-dna-hc", "CH-DNA-HC", "DNA", "Chain DNA", {}, { Sequence_Length: "720bp" }),
+    makeNode("chain-dna-lc", "CH-DNA-LC", "DNA", "Chain DNA", {}, { Sequence_Length: "690bp" }),
+    makeNode("antigen-lot-001", "AG-LOT-001", "AA", "Antigen_lot", {}, { Lot_Number: "LOT-2026-01", Expiry: "2027-06" }),
+    makeNode("sample-lot-001", "SMP-LOT-001", "AA", "Sample Lot", {}, { Volume: "500 µL", Storage: "-80°C" }),
+    makeNode("sample-lot-002", "SMP-LOT-002", "AA", "Sample Lot", {}, { Volume: "200 µL", Storage: "-80°C" }),
+    makeNode("animal-001", "AN-MOUSE-001", "Other", "Animal", {}, { Species: "Mouse", Age: "8w" }),
+    makeNode("project-001", "PRJ-PDL1", "Other", "项目代号", {}, { Phase: "I", Sponsor: "R&D" }),
+    makeNode("noperm-001", "RESTRICTED", "Other", "Restricted", {}, { noPermission: true })
+  ];
+
+  const edges = [
+    { from: "deep-dna-001", to: "dna-hc", type: "parent" },
+    { from: "dna-hc", to: "plasmid-hc", type: "parent" },
+    { from: "dna-lc", to: "plasmid-lc", type: "parent" },
+    { from: "plasmid-hc", to: "cell-001", type: "parent" },
+    { from: "plasmid-lc", to: "cell-001", type: "parent" },
+    { from: "parent-cell-001", to: "cell-001", type: "parent" },
+    { from: "cell-001", to: "ac-001", type: "parent" },
+    { from: "cell-001", to: "animal-sra-001", type: "assoc" },
+    { from: "ac-001", to: "purified-001", type: "parent" },
+    { from: "ac-001", to: "antigen-001", type: "assoc" },
+    { from: "ac-001", to: "chain-aa-hc", type: "assoc" },
+    { from: "ac-001", to: "chain-aa-lc", type: "assoc" },
+    { from: "antigen-001", to: "antigen-lot-001", type: "parent" },
+    { from: "chain-aa-hc", to: "chain-dna-hc", type: "assoc" },
+    { from: "chain-aa-lc", to: "chain-dna-lc", type: "assoc" },
+    { from: "animal-sra-001", to: "chain-dna-hc", type: "assoc" },
+    { from: "animal-sra-001", to: "chain-dna-lc", type: "assoc" },
+    { from: "animal-sra-001", to: "animal-001", type: "parent" },
+    { from: "purified-001", to: "sample-lot-001", type: "parent" },
+    { from: "sample-lot-001", to: "sample-lot-002", type: "parent" },
+    { from: "animal-001", to: "project-001", type: "parent" },
+    { from: "animal-001", to: "antigen-lot-001", type: "assoc" },
+    { from: "purified-001", to: "noperm-001", type: "assoc" }
+  ];
+
+  const RELATION_LABELS = { all: "全部关系", parent: "父子关系", assoc: "关联关系" };
+
+  const state = {
+    depthBack: DEPTH_BACK,
+    depthFwd: DEPTH_FWD,
+    relation: "all",
+    typeFilter: new Set(ALL_OBJECT_TYPES),
+    typeFilterDraft: null,
+    layers: {},
+    visibleIds: new Set(),
+    frontierBack: new Set(),
+    frontierFwd: new Set(),
+    fieldSettings: null,
+    settingsDraft: null,
+    activePopoverId: null,
+    popoverTimer: null,
+    nodePositions: {}
+  };
+
+  const view = { scale: 1, panX: 0, panY: 0, min: 0.25, max: 2, step: 0.1 };
+
+  const map = document.getElementById("map");
+  const stage = document.getElementById("stage");
+  const svg = document.getElementById("edges");
+  const popover = document.getElementById("node-popover");
+  const popoverBody = document.getElementById("node-popover-body");
+  const nodeEls = {};
+  const nodeById = Object.fromEntries(nodes.map((n) => [n.id, n]));
+
+  function defaultFieldSettings() {
+    const basic = {};
+    BASIC_FIELDS.forEach((f) => { basic[f.key] = !!f.defaultOn; });
+    const custom = {};
+    Object.keys(CUSTOM_FIELDS_BY_TYPE).forEach((t) => {
+      custom[t] = {};
+      CUSTOM_FIELDS_BY_TYPE[t].forEach((c) => { custom[t][c] = false; });
+    });
+    return { basic, custom };
+  }
+
+  function loadFieldSettings() {
+    try {
+      const raw = localStorage.getItem(LS_KEY);
+      if (!raw) return defaultFieldSettings();
+      const parsed = JSON.parse(raw);
+      const base = defaultFieldSettings();
+      Object.assign(base.basic, parsed.basic || {});
+      Object.keys(base.custom).forEach((t) => {
+        if (parsed.custom && parsed.custom[t]) Object.assign(base.custom[t], parsed.custom[t]);
+      });
+      return base;
+    } catch (_) { return defaultFieldSettings(); }
+  }
+
+  function saveFieldSettings(s) {
+    localStorage.setItem(LS_KEY, JSON.stringify(s));
+    state.fieldSettings = s;
+  }
+
+  state.fieldSettings = loadFieldSettings();
+
+  function getNeighbors(id) {
+    const list = [];
+    edges.forEach((e) => {
+      if (e.from === id) list.push({ id: e.to, dir: 1, edge: e });
+      else if (e.to === id) list.push({ id: e.from, dir: -1, edge: e });
+    });
+    return list;
+  }
+
+  function layerDelta(fromId, toId, edge, dir) {
+    if (edge.type === "parent") {
+      if (dir === 1) return edge.from === fromId ? 1 : -1;
+      return edge.to === fromId ? -1 : 1;
+    }
+    return edge.from === fromId ? 1 : -1;
+  }
+
+  function computeLayers() {
+    const layers = { [CENTER_ID]: 0 };
+    const q = [CENTER_ID];
+    while (q.length) {
+      const cur = q.shift();
+      const curLayer = layers[cur];
+      getNeighbors(cur).forEach(({ id, dir, edge }) => {
+        if (layers[id] !== undefined) return;
+        const delta = layerDelta(cur, id, edge, dir);
+        layers[id] = curLayer + (dir > 0 ? delta : -delta);
+        q.push(id);
+      });
+    }
+    nodes.forEach((n) => { if (layers[n.id] === undefined) layers[n.id] = 99; });
+    state.layers = layers;
+    return layers;
+  }
+
+  function computeVisibility() {
+    const layers = computeLayers();
+    const visible = new Set();
+    const frontierBack = new Set();
+    const frontierFwd = new Set();
+    nodes.forEach((n) => {
+      const L = layers[n.id];
+      if (L >= -state.depthBack && L <= state.depthFwd) visible.add(n.id);
+    });
+    visible.forEach((id) => {
+      const L = layers[id];
+      getNeighbors(id).forEach(({ id: nid }) => {
+        const nL = layers[nid];
+        if (nL < -state.depthBack && L === -state.depthBack) frontierBack.add(id);
+        if (nL > state.depthFwd && L === state.depthFwd) frontierFwd.add(id);
+      });
+    });
+    state.visibleIds = visible;
+    state.frontierBack = frontierBack;
+    state.frontierFwd = frontierFwd;
+  }
+
+  function isTypeVisible(n) {
+    return state.typeFilter.has(n.objectType);
+  }
+
+  function isNodeShown(n) {
+    return state.visibleIds.has(n.id) && isTypeVisible(n);
+  }
+
+  function entityUrl(id) { return `https://example.com/entity/${id}`; }
+
+  function getIcon(type) { return ICONS[type] || ICONS.Other; }
+
+  function fieldLabel(key) {
+    const f = BASIC_FIELDS.find((x) => x.key === key);
+    return f ? f.label : key;
+  }
+
+  function getNodeSubtitleLines(n) {
+    const lines = [];
+    const fs = state.fieldSettings;
+    BASIC_FIELDS.forEach((f) => {
+      if (!fs.basic[f.key]) return;
+      const val = n.fields[f.key];
+      if (val) lines.push(`${f.label}：${val}`);
+    });
+    const customs = fs.custom[n.objectType] || {};
+    Object.keys(customs).forEach((k) => {
+      if (!customs[k]) return;
+      const val = n.custom[k.replace(/ /g, "_")] || n.custom[k];
+      if (val) lines.push(`${k}：${val}`);
+    });
+    return lines;
+  }
+
+  function autoLayout() {
+    const byCol = {};
+    nodes.forEach((n) => {
+      if (!state.visibleIds.has(n.id)) return;
+      const col = state.layers[n.id];
+      if (!byCol[col]) byCol[col] = [];
+      byCol[col].push(n);
+    });
+    Object.keys(byCol).forEach((col) => {
+      const list = byCol[col].sort((a, b) => a.label.localeCompare(b.label));
+      const colX = START_X + (Number(col) + state.depthBack) * COL_GAP;
+      const totalH = (list.length - 1) * ROW_GAP;
+      list.forEach((n, i) => {
+        const saved = state.nodePositions[n.id];
+        if (saved) { n.x = saved.x; n.y = saved.y; }
+        else {
+          n.x = colX;
+          n.y = START_Y + i * ROW_GAP - totalH / 2 + 200;
+        }
+      });
+    });
+  }
+
+  function snapPan(v) {
+    const dpr = window.devicePixelRatio || 1;
+    return Math.round(v * dpr) / dpr;
+  }
+
+  function applyViewTransform() {
+    view.panX = snapPan(view.panX);
+    view.panY = snapPan(view.panY);
+    if (Math.abs(view.scale - 1) < 0.0005) {
+      view.scale = 1;
+      stage.style.transform = `translate(${view.panX}px, ${view.panY}px)`;
+    } else {
+      stage.style.transform = `translate(${view.panX}px, ${view.panY}px) scale(${view.scale})`;
+    }
+    document.getElementById("zoom-pct-text").textContent = Math.round(view.scale * 100) + "%";
+    document.querySelectorAll("#zoom-menu .filter-option").forEach((opt) => {
+      opt.classList.toggle("active", Math.abs(Number(opt.dataset.zoom) - view.scale) < 0.001);
+    });
+    if (state.activePopoverId && nodeEls[state.activePopoverId]) positionPopover(nodeEls[state.activePopoverId]);
+  }
+
+  function setZoom(next, ax, ay) {
+    const prev = view.scale;
+    const scale = Math.min(view.max, Math.max(view.min, next));
+    const rect = map.getBoundingClientRect();
+    const anchorX = (ax ?? rect.left + rect.width / 2) - rect.left;
+    const anchorY = (ay ?? rect.top + rect.height / 2) - rect.top;
+    view.scale = scale;
+    view.panX = anchorX - ((anchorX - view.panX) / prev) * scale;
+    view.panY = anchorY - ((anchorY - view.panY) / prev) * scale;
+    applyViewTransform();
+  }
+
+  function getContentBounds() {
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity, any = false;
+    nodes.forEach((n) => {
+      if (!isNodeShown(n)) return;
+      const el = nodeEls[n.id];
+      if (!el) return;
+      any = true;
+      const w = el.offsetWidth || 168, h = el.offsetHeight || 56;
+      minX = Math.min(minX, n.x); minY = Math.min(minY, n.y);
+      maxX = Math.max(maxX, n.x + w); maxY = Math.max(maxY, n.y + h);
+    });
+    return any ? { minX, minY, maxX, maxY, width: maxX - minX, height: maxY - minY } : null;
+  }
+
+  function fitView() {
+    const b = getContentBounds();
+    if (!b) return;
+    const pad = 80;
+    view.scale = Math.min(view.max, Math.max(view.min,
+      Math.min((map.clientWidth - pad * 2) / b.width, (map.clientHeight - pad * 2) / b.height)));
+    view.panX = (map.clientWidth - b.width * view.scale) / 2 - b.minX * view.scale;
+    view.panY = (map.clientHeight - b.height * view.scale) / 2 - b.minY * view.scale;
+    applyViewTransform();
+  }
+
+  function centerOnNode(id) {
+    const n = nodeById[id];
+    const el = nodeEls[id];
+    if (!n || !el) return;
+    view.scale = 1;
+    view.panX = map.clientWidth * 0.4 - (n.x + el.offsetWidth / 2);
+    view.panY = map.clientHeight * 0.42 - (n.y + el.offsetHeight / 2);
+    applyViewTransform();
+  }
+
+  function port(el, side) {
+    const y = el.offsetTop + el.offsetHeight / 2;
+    const x = side === "right" ? el.offsetLeft + el.offsetWidth : el.offsetLeft;
+    return { x, y };
+  }
+
+  function curve(a, b) {
+    const dx = Math.max(48, (b.x - a.x) * 0.48);
+    return `M ${a.x} ${a.y} C ${a.x + dx} ${a.y}, ${b.x - dx} ${b.y}, ${b.x} ${b.y}`;
+  }
+
+  function horizontalArrow(tipX, tipY, size) {
+    const baseX = tipX - size, h = size * 0.55;
+    return `M ${tipX} ${tipY} L ${baseX} ${tipY - h} L ${baseX} ${tipY + h} Z`;
+  }
+
+  function drawEdges() {
+    const b = getContentBounds() || { minX: 0, minY: 0, maxX: 1400, maxY: 900 };
+    const pad = 200;
+    const w = Math.ceil(Math.max(b.maxX + pad, 1200));
+    const h = Math.ceil(Math.max(b.maxY + pad, 800));
+    svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
+    svg.setAttribute("width", String(w));
+    svg.setAttribute("height", String(h));
+    svg.style.width = w + "px";
+    svg.style.height = h + "px";
+    const parts = [];
+    const arrowByTarget = new Map();
+    edges.forEach((e) => {
+      if (state.relation !== "all" && e.type !== state.relation) return;
+      const fromN = nodeById[e.from], toN = nodeById[e.to];
+      if (!isNodeShown(fromN) || !isNodeShown(toN)) return;
+      const fromEl = nodeEls[e.from], toEl = nodeEls[e.to];
+      if (!fromEl || !toEl) return;
+      const from = port(fromEl, "right");
+      const tip = port(toEl, "left");
+      const lineEnd = { x: tip.x - ARROW_SIZE, y: tip.y };
+      const cls = e.type === "assoc" ? "assoc" : "parent";
+      parts.push(`<path class="line ${cls}" d="${curve(from, lineEnd)}" />`);
+      const rank = e.type === "parent" ? 1 : 0;
+      const prev = arrowByTarget.get(e.to);
+      if (!prev || rank > prev.rank) arrowByTarget.set(e.to, { tip, type: e.type, rank });
+    });
+    arrowByTarget.forEach(({ tip, type }) => {
+      const cls = type === "assoc" ? "assoc" : "parent";
+      parts.push(`<path class="arrow ${cls}" d="${horizontalArrow(tip.x, tip.y, ARROW_SIZE)}" />`);
+    });
+    svg.innerHTML = parts.join("");
+  }
+
+  function buildNodeFieldsHtml(n) {
+    const lines = getNodeSubtitleLines(n);
+    if (!lines.length) return "";
+    return `<div class="node-fields">${lines.map((l) => `<div class="field-line">${l}</div>`).join("")}</div>`;
+  }
+
+  function updateNodeEl(n) {
+    const el = nodeEls[n.id];
+    if (!el) return;
+    const shown = isNodeShown(n);
+    el.classList.toggle("hidden", !shown);
+    el.classList.toggle("center", n.id === CENTER_ID);
+    if (n.noPermission) {
+      el.className = "node noperm" + (shown ? "" : " hidden");
+      el.innerHTML = `<div class="noperm-text">无权限查看</div>`;
+      if (!el.dataset.dragBound) enableDrag(el, n);
+      return;
+    }
+    el.className = "node" + (n.id === CENTER_ID ? " center" : "") + (shown ? "" : " hidden");
+    el.innerHTML = `
+      <div class="node-chip">${getIcon(n.iconType)}<span class="node-id">${n.label}</span></div>
+      ${buildNodeFieldsHtml(n)}
+      <button class="expand-btn back" type="button" data-dir="back" aria-label="展开上游">‹</button>
+      <button class="expand-btn fwd" type="button" data-dir="fwd" aria-label="展开下游">›</button>`;
+    const chip = el.querySelector(".node-chip");
+    if (chip && !chip.dataset.bound) {
+      chip.dataset.bound = "1";
+      setupChipInteractions(chip, n);
+    }
+    el.querySelectorAll(".expand-btn").forEach((btn) => {
+      if (btn.dataset.bound) return;
+      btn.dataset.bound = "1";
+      btn.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        if (btn.dataset.dir === "back") state.depthBack += 1;
+        else state.depthFwd += 1;
+        refreshGraph();
+      });
+    });
+    if (!el.dataset.dragBound) enableDrag(el, n);
+    updateExpandButtons(n, el);
+  }
+
+  function updateExpandButtons(n, el) {
+    const backBtn = el.querySelector(".expand-btn.back");
+    const fwdBtn = el.querySelector(".expand-btn.fwd");
+    if (!backBtn || !fwdBtn) return;
+    backBtn.classList.toggle("show", state.frontierBack.has(n.id));
+    fwdBtn.classList.toggle("show", state.frontierFwd.has(n.id));
+  }
+
+  function renderAllNodes() {
+    nodes.forEach((n) => {
+      let el = nodeEls[n.id];
+      if (!el) {
+        el = document.createElement("div");
+        el.id = "node-" + n.id;
+        el.dataset.id = n.id;
+        stage.appendChild(el);
+        nodeEls[n.id] = el;
+      }
+      el.style.left = n.x + "px";
+      el.style.top = n.y + "px";
+      updateNodeEl(n);
+    });
+  }
+
+  function refreshGraph() {
+    computeVisibility();
+    autoLayout();
+    nodes.forEach((n) => {
+      const el = nodeEls[n.id];
+      if (el) { el.style.left = n.x + "px"; el.style.top = n.y + "px"; }
+      updateNodeEl(n);
+    });
+    drawEdges();
+  }
+
+  function setupChipInteractions(chip, n) {
+    chip.addEventListener("mouseenter", () => {
+      clearTimeout(state.popoverTimer);
+      showPopover(n, chip.closest(".node"));
+    });
+    chip.addEventListener("mouseleave", () => {
+      state.popoverTimer = setTimeout(hidePopover, POPOVER_HIDE_DELAY);
+    });
+    chip.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      window.open(entityUrl(n.id), "_blank", "noopener");
+    });
+  }
+
+  function buildPopoverDetail(n) {
+    const rows = [];
+    rows.push(`<div class="pop-row"><div class="pop-label">名称</div><div class="pop-value"><span class="pop-name">${getIcon(n.iconType)}<span>${n.label}</span></span></div></div>`);
+    BASIC_FIELDS.forEach((f) => {
+      const val = n.fields[f.key] || "—";
+      rows.push(`<div class="pop-row"><div class="pop-label">${f.label}</div><div class="pop-value">${val}</div></div>`);
+    });
+    const customs = CUSTOM_FIELDS_BY_TYPE[n.objectType] || [];
+    customs.forEach((k) => {
+      const val = n.custom[k.replace(/ /g, "_")] || n.custom[k] || "—";
+      rows.push(`<div class="pop-row"><div class="pop-label">${k}</div><div class="pop-value">${val}</div></div>`);
+    });
+    return rows.join("");
+  }
+
+  function positionPopover(nodeEl) {
+    const mapRect = map.getBoundingClientRect();
+    const chip = nodeEl.querySelector(".node-chip") || nodeEl;
+    const nodeRect = chip.getBoundingClientRect();
+    const popW = popover.offsetWidth || 320;
+    const popH = popover.offsetHeight || 360;
+    const gap = 10, margin = 16;
+    let left = nodeRect.left - mapRect.left;
+    if (left + popW > mapRect.width - margin) left = mapRect.width - popW - margin;
+    if (left < margin) left = margin;
+    const belowTop = nodeRect.bottom - mapRect.top + gap;
+    const aboveTop = nodeRect.top - mapRect.top - popH - gap;
+    const spaceBelow = mapRect.height - (nodeRect.bottom - mapRect.top) - margin;
+    let top = spaceBelow >= popH + gap ? belowTop : (aboveTop >= margin ? aboveTop : Math.min(belowTop, Math.max(margin, mapRect.height - popH - margin)));
+    popover.style.left = Math.round(left) + "px";
+    popover.style.top = Math.round(top) + "px";
+  }
+
+  function showPopover(n, nodeEl) {
+    if (n.noPermission) return;
+    state.activePopoverId = n.id;
+    popoverBody.innerHTML = buildPopoverDetail(n);
+    popover.classList.add("open");
+    requestAnimationFrame(() => positionPopover(nodeEl));
+  }
+
+  function hidePopover() {
+    state.activePopoverId = null;
+    popover.classList.remove("open");
+  }
+
+  popover.addEventListener("mouseenter", () => clearTimeout(state.popoverTimer));
+  popover.addEventListener("mouseleave", () => { state.popoverTimer = setTimeout(hidePopover, POPOVER_HIDE_DELAY); });
+
+  function enableDrag(el, n) {
+    if (el.dataset.dragBound) return;
+    el.dataset.dragBound = "1";
+    if (n.noPermission) {
+      el.onpointerdown = null;
+      let dragging = false, sx, sy, ox, oy;
+      el.addEventListener("pointerdown", (ev) => {
+        if (ev.button !== 0) return;
+        dragging = true;
+        el.classList.add("dragging");
+        el.setPointerCapture(ev.pointerId);
+        sx = ev.clientX; sy = ev.clientY; ox = n.x; oy = n.y;
+        ev.preventDefault();
+      });
+      el.addEventListener("pointermove", (ev) => {
+        if (!dragging) return;
+        n.x = ox + (ev.clientX - sx) / view.scale;
+        n.y = oy + (ev.clientY - sy) / view.scale;
+        el.style.left = n.x + "px"; el.style.top = n.y + "px";
+        state.nodePositions[n.id] = { x: n.x, y: n.y };
+        drawEdges();
+      });
+      el.addEventListener("pointerup", () => { dragging = false; el.classList.remove("dragging"); });
+      return;
+    }
+    let dragging = false, moved = false, sx, sy, ox, oy;
+    const onDown = (ev) => {
+      if (ev.button !== 0 || ev.target.closest(".node-chip, .expand-btn")) return;
+      dragging = true; moved = false;
+      el.classList.add("dragging");
+      el.setPointerCapture(ev.pointerId);
+      sx = ev.clientX; sy = ev.clientY; ox = n.x; oy = n.y;
+      hidePopover();
+      ev.preventDefault();
+    };
+    const onMove = (ev) => {
+      if (!dragging) return;
+      const dx = ev.clientX - sx, dy = ev.clientY - sy;
+      if (!moved && Math.hypot(dx, dy) > CLICK_MOVE_THRESHOLD) moved = true;
+      if (!moved) return;
+      n.x = ox + dx / view.scale; n.y = oy + dy / view.scale;
+      el.style.left = n.x + "px"; el.style.top = n.y + "px";
+      state.nodePositions[n.id] = { x: n.x, y: n.y };
+      drawEdges();
+    };
+    const onUp = () => { dragging = false; el.classList.remove("dragging"); };
+    el.addEventListener("pointerdown", onDown);
+    el.addEventListener("pointermove", onMove);
+    el.addEventListener("pointerup", onUp);
+    el.addEventListener("pointercancel", onUp);
+  }
+
+  function setupFilters() {
+    const relTrigger = document.getElementById("relation-trigger");
+    const relMenu = document.getElementById("relation-menu");
+    const relLabel = document.getElementById("relation-label");
+    relTrigger.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      relMenu.classList.toggle("open");
+      document.getElementById("type-filter-popover").classList.remove("open");
+    });
+    relMenu.querySelectorAll(".filter-option").forEach((opt) => {
+      opt.addEventListener("click", () => {
+        state.relation = opt.dataset.value;
+        relLabel.textContent = RELATION_LABELS[state.relation];
+        relMenu.querySelectorAll(".filter-option").forEach((o) => o.classList.toggle("active", o.dataset.value === state.relation));
+        relMenu.classList.remove("open");
+        drawEdges();
+      });
+    });
+  }
+
+  function renderTypeFilterList(filter) {
+    const list = document.getElementById("type-check-list");
+    const q = (document.getElementById("type-search").value || "").trim().toLowerCase();
+    list.innerHTML = ALL_OBJECT_TYPES.filter((t) => !q || t.toLowerCase().includes(q)).map((t) => `
+      <label class="type-check-item">
+        <input type="checkbox" data-type="${t}" ${filter.has(t) ? "checked" : ""} />
+        <span>${t}</span>
+      </label>`).join("");
+  }
+
+  function updateTypeFilterDot() {
+    document.getElementById("type-filter-btn").classList.toggle("has-filter", state.typeFilter.size < ALL_OBJECT_TYPES.length);
+  }
+
+  function setupTypeFilter() {
+    const btn = document.getElementById("type-filter-btn");
+    const pop = document.getElementById("type-filter-popover");
+    const search = document.getElementById("type-search");
+    btn.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      state.typeFilterDraft = new Set(state.typeFilter);
+      renderTypeFilterList(state.typeFilterDraft);
+      pop.classList.toggle("open");
+      document.getElementById("relation-menu").classList.remove("open");
+    });
+    search.addEventListener("input", () => renderTypeFilterList(state.typeFilterDraft || state.typeFilter));
+    document.getElementById("type-filter-confirm").addEventListener("click", () => {
+      const checked = new Set();
+      pop.querySelectorAll("input[data-type]:checked").forEach((inp) => checked.add(inp.dataset.type));
+      if (checked.size) state.typeFilter = checked;
+      pop.classList.remove("open");
+      updateTypeFilterDot();
+      refreshGraph();
+    });
+    updateTypeFilterDot();
+  }
+
+  function renderSettingsModal(draft) {
+    const basicWrap = document.getElementById("basic-field-checks");
+    basicWrap.innerHTML = `
+      <label><input type="checkbox" id="basic-select-all" /> 全选</label>
+      ${BASIC_FIELDS.map((f) => `
+        <label><input type="checkbox" data-basic="${f.key}" ${draft.basic[f.key] ? "checked" : ""} /> ${f.label}</label>
+      `).join("")}`;
+    const allChecked = BASIC_FIELDS.every((f) => draft.basic[f.key]);
+    basicWrap.querySelector("#basic-select-all").checked = allChecked;
+    basicWrap.querySelector("#basic-select-all").addEventListener("change", (ev) => {
+      BASIC_FIELDS.forEach((f) => { draft.basic[f.key] = ev.target.checked; });
+      basicWrap.querySelectorAll("[data-basic]").forEach((inp) => { inp.checked = ev.target.checked; });
+    });
+    basicWrap.querySelectorAll("[data-basic]").forEach((inp) => {
+      inp.addEventListener("change", () => {
+        draft.basic[inp.dataset.basic] = inp.checked;
+        basicWrap.querySelector("#basic-select-all").checked = BASIC_FIELDS.every((f) => draft.basic[f.key]);
+      });
+    });
+    const typeList = document.getElementById("custom-type-list");
+    const types = Object.keys(CUSTOM_FIELDS_BY_TYPE);
+    let activeType = types[0];
+    function renderCustomFields(type) {
+      activeType = type;
+      typeList.querySelectorAll(".custom-type-item").forEach((el) => el.classList.toggle("active", el.dataset.type === type));
+      const wrap = document.getElementById("custom-field-checks");
+      const fields = CUSTOM_FIELDS_BY_TYPE[type] || [];
+      wrap.innerHTML = fields.map((f) => `
+        <label><input type="checkbox" data-custom="${f}" data-otype="${type}" ${draft.custom[type] && draft.custom[type][f] ? "checked" : ""} /> ${f}</label>
+      `).join("") || `<span style="font-size:12px;color:#9a9aa0">无自定义字段</span>`;
+      wrap.querySelectorAll("[data-custom]").forEach((inp) => {
+        inp.addEventListener("change", () => {
+          if (!draft.custom[inp.dataset.otype]) draft.custom[inp.dataset.otype] = {};
+          draft.custom[inp.dataset.otype][inp.dataset.custom] = inp.checked;
+        });
+      });
+    }
+    typeList.innerHTML = types.map((t) => `<div class="custom-type-item${t === activeType ? " active" : ""}" data-type="${t}">${t}</div>`).join("");
+    typeList.querySelectorAll(".custom-type-item").forEach((el) => {
+      el.addEventListener("click", () => renderCustomFields(el.dataset.type));
+    });
+    renderCustomFields(activeType);
+  }
+
+  function setupSettings() {
+    const overlay = document.getElementById("settings-modal-overlay");
+    document.getElementById("settings-btn").addEventListener("click", () => {
+      state.settingsDraft = JSON.parse(JSON.stringify(state.fieldSettings));
+      renderSettingsModal(state.settingsDraft);
+      overlay.classList.add("open");
+    });
+    document.getElementById("settings-cancel").addEventListener("click", () => overlay.classList.remove("open"));
+    overlay.addEventListener("click", (ev) => { if (ev.target === overlay) overlay.classList.remove("open"); });
+    overlay.querySelector(".settings-modal").addEventListener("click", (ev) => ev.stopPropagation());
+    document.getElementById("settings-reset").addEventListener("click", () => {
+      state.settingsDraft = defaultFieldSettings();
+      renderSettingsModal(state.settingsDraft);
+    });
+    document.getElementById("settings-confirm").addEventListener("click", () => {
+      saveFieldSettings(state.settingsDraft);
+      overlay.classList.remove("open");
+      nodes.forEach((n) => updateNodeEl(n));
+    });
+  }
+
+  function setupZoomControls() {
+    document.getElementById("zoom-in").addEventListener("click", () => {
+      const next = ZOOM_PRESETS.find((z) => z > view.scale + 0.001) ?? Math.min(view.max, view.scale + view.step);
+      setZoom(next);
+    });
+    document.getElementById("zoom-out").addEventListener("click", () => {
+      const prevs = ZOOM_PRESETS.filter((z) => z < view.scale - 0.001);
+      setZoom(prevs.length ? prevs[prevs.length - 1] : Math.max(view.min, view.scale - view.step));
+    });
+    document.getElementById("zoom-fit").addEventListener("click", fitView);
+    const fsBtn = document.getElementById("zoom-fullscreen");
+    const isFs = () => (document.fullscreenElement || document.webkitFullscreenElement) === map;
+    const updFs = () => fsBtn.classList.toggle("is-fullscreen", isFs());
+    fsBtn.addEventListener("click", async () => {
+      try {
+        if (isFs()) { if (document.exitFullscreen) await document.exitFullscreen(); else document.webkitExitFullscreen(); }
+        else { if (map.requestFullscreen) await map.requestFullscreen(); else map.webkitRequestFullscreen(); }
+      } catch (_) {}
+      updFs();
+    });
+    document.addEventListener("fullscreenchange", updFs);
+    const zoomPctBtn = document.getElementById("zoom-pct");
+    const zoomMenu = document.getElementById("zoom-menu");
+    zoomPctBtn.addEventListener("click", (ev) => { ev.stopPropagation(); zoomMenu.classList.toggle("open"); });
+    zoomMenu.querySelectorAll(".filter-option").forEach((opt) => {
+      opt.addEventListener("click", (ev) => { ev.stopPropagation(); setZoom(Number(opt.dataset.zoom)); zoomMenu.classList.remove("open"); });
+    });
+    map.addEventListener("wheel", (ev) => {
+      if (ev.target.closest(".filter-bar, .zoom-bar, .edge-legend, .node-popover, .modal-overlay")) return;
+      ev.preventDefault();
+      setZoom(view.scale + (ev.deltaY > 0 ? -view.step : view.step), ev.clientX, ev.clientY);
+    }, { passive: false });
+    updFs();
+  }
+
+  function setupPan() {
+    let panning = false, sx, sy, ox, oy;
+    map.addEventListener("pointerdown", (ev) => {
+      if (ev.button !== 0) return;
+      if (ev.target.closest(".node, .filter-bar, .zoom-bar, .edge-legend, .filter-menu, .zoom-menu, .node-popover, .type-filter-popover, .modal-overlay")) return;
+      hidePopover();
+      panning = true;
+      map.setPointerCapture(ev.pointerId);
+      sx = ev.clientX; sy = ev.clientY; ox = view.panX; oy = view.panY;
+      map.style.cursor = "grabbing";
+    });
+    map.addEventListener("pointermove", (ev) => {
+      if (!panning) return;
+      view.panX = ox + (ev.clientX - sx);
+      view.panY = oy + (ev.clientY - sy);
+      applyViewTransform();
+    });
+    const end = () => { panning = false; map.style.cursor = ""; };
+    map.addEventListener("pointerup", end);
+    map.addEventListener("pointercancel", end);
+  }
+
+  document.addEventListener("click", () => {
+    document.getElementById("relation-menu").classList.remove("open");
+    document.getElementById("type-filter-popover").classList.remove("open");
+    document.getElementById("zoom-menu").classList.remove("open");
+  });
+  document.getElementById("filter-bar").addEventListener("click", (ev) => ev.stopPropagation());
+  document.querySelector(".zoom-bar").addEventListener("click", (ev) => ev.stopPropagation());
+
+  setupFilters();
+  setupTypeFilter();
+  setupSettings();
+  setupZoomControls();
+  setupPan();
+  refreshGraph();
+  requestAnimationFrame(() => { centerOnNode(CENTER_ID); fitView(); });
+  window.addEventListener("resize", () => { drawEdges(); if (state.activePopoverId) positionPopover(nodeEls[state.activePopoverId]); });
+})();
+  </script>
+</body>
+</html>
