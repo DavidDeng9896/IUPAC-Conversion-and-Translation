@@ -138,6 +138,13 @@
       box-shadow: 0 0 0 .5px rgba(72,111,251,.25);
     }
     .node.selected .node-chip { background: #dfe3ec; }
+    .node:hover {
+      border-color: var(--blue-selected);
+      box-shadow: 0 0 0 1px rgba(72, 111, 251, 0.4), 0 2px 8px rgba(72, 111, 251, 0.12);
+    }
+    .node.dragging:hover {
+      box-shadow: 0 6px 18px rgba(16,16,20,.14);
+    }
     .node {
       position: absolute; background: #fff; border: 1px solid var(--border-card);
       border-radius: 4px; padding: 8px 9px 9px;
@@ -417,11 +424,11 @@
   const CENTER_ID = "ac-001";
   const DEPTH_BACK = 3;
   const DEPTH_FWD = 3;
-  const COL_GAP = 280;
-  const ROW_GAP = 72;
+  const COL_GAP = 300;
+  const NODE_GAP = 20;
   const START_X = 80;
   const START_Y = 60;
-  const LS_KEY = "registry-map-field-settings";
+  const LS_KEY = "registry-map-field-settings-v2";
   const ZOOM_PRESETS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 2];
   const ARROW_SIZE = 9;
   const CLICK_MOVE_THRESHOLD = 4;
@@ -439,18 +446,40 @@
     RNA: `<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M6 4c4 0 6 3 6 6s-2 6-6 6M18 8c-4 0-6 3-6 6s2 6 6 6"/></svg>`
   };
 
+  // 对象类型仅允许这 6 类
+  const OBJECT_TYPE_CATEGORIES = ["自定义类型", "化合物类型", "RNA类型", "DNA类型", "氨基酸类型", "抗体蛋白类型"];
+
+  const OBJECT_CATEGORY_MAP = {
+    "Antibody Complex": "抗体蛋白类型",
+    "Antibody-purified Protein": "抗体蛋白类型",
+    "Antigen (AA)": "氨基酸类型",
+    "Chain (AA)": "氨基酸类型",
+    "Antigen_lot": "氨基酸类型",
+    "Sample Lot": "氨基酸类型",
+    "Chain DNA": "DNA类型",
+    "Plasmid": "DNA类型",
+    "Cell": "自定义类型",
+    "Parent Cell": "自定义类型",
+    "Animal": "自定义类型",
+    "Animal (SRA)": "自定义类型",
+    "项目代号": "自定义类型",
+    "Restricted": "自定义类型"
+  };
+
   const BASIC_FIELDS = [
-    { key: "name", label: "名称" },
+    { key: "name", label: "名称", defaultOn: true },
+    { key: "object", label: "对象", defaultOn: true },
+    { key: "objectType", label: "对象类型", defaultOn: false },
     { key: "project", label: "项目" },
     { key: "department", label: "所属部门" },
     { key: "status", label: "状态" },
-    { key: "objectType", label: "对象类型", defaultOn: true },
     { key: "sharing", label: "数据分享" },
     { key: "creator", label: "创建人" },
     { key: "createdAt", label: "创建时间" }
   ];
 
-  const CUSTOM_FIELDS_BY_TYPE = {
+  // 按「对象」分组的自定义字段
+  const CUSTOM_FIELDS_BY_OBJECT = {
     "Antibody Complex": ["Antigen Type", "Isotype", "MW(Da)", "PTM Liabilities"],
     "Cell": ["Cell Line", "Passage", "Viability"],
     "Chain DNA": ["Sequence Length", "Vector"],
@@ -466,21 +495,27 @@
     "Parent Cell": ["Origin", "Notes"]
   };
 
-  const ALL_OBJECT_TYPES = [
-    "Antibody Complex", "Cell", "Parent Cell", "Chain DNA", "Plasmid",
-    "Chain (AA)", "Antigen (AA)", "Antibody-purified Protein", "Antigen_lot",
-    "Sample Lot", "Animal (SRA)", "Animal", "项目代号", "Restricted"
-  ];
+  const ALL_OBJECTS = Object.keys(OBJECT_CATEGORY_MAP);
 
-  function makeNode(id, label, iconType, objectType, fields, extra) {
+  function makeNode(id, label, iconType, objectName, fields, extra) {
     const opts = extra || {};
     const { noPermission, ...customFields } = opts;
+    const objectType = OBJECT_CATEGORY_MAP[objectName] || "自定义类型";
     return {
-      id, label, iconType, objectType, x: 0, y: 0,
+      id, label, iconType,
+      object: objectName,
+      objectType,
+      x: 0, y: 0,
       noPermission: !!noPermission,
       fields: Object.assign({
-        name: label, project: "PDL1-01", department: "抗体研发部",
-        status: "有效", objectType, sharing: "团队内", creator: "zhang.wei",
+        name: label,
+        object: objectName,
+        objectType,
+        project: "PDL1-01",
+        department: "抗体研发部",
+        status: "有效",
+        sharing: "团队内",
+        creator: "zhang.wei",
         createdAt: "2026-01-15 10:30:00"
       }, fields),
       custom: customFields
@@ -548,7 +583,7 @@
     depthBack: DEPTH_BACK,
     depthFwd: DEPTH_FWD,
     relation: "all",
-    typeFilter: new Set(ALL_OBJECT_TYPES),
+    typeFilter: new Set(ALL_OBJECTS),
     typeFilterDraft: null,
     layers: {},
     visibleIds: new Set(),
@@ -577,9 +612,9 @@
     const basic = {};
     BASIC_FIELDS.forEach((f) => { basic[f.key] = !!f.defaultOn; });
     const custom = {};
-    Object.keys(CUSTOM_FIELDS_BY_TYPE).forEach((t) => {
+    Object.keys(CUSTOM_FIELDS_BY_OBJECT).forEach((t) => {
       custom[t] = {};
-      CUSTOM_FIELDS_BY_TYPE[t].forEach((c) => { custom[t][c] = false; });
+      CUSTOM_FIELDS_BY_OBJECT[t].forEach((c) => { custom[t][c] = false; });
     });
     return { basic, custom };
   }
@@ -637,7 +672,7 @@
     if (!n) return false;
     // 基准中心始终参与连通与显示
     if (n.id === CENTER_ID) return true;
-    return state.typeFilter.has(n.objectType);
+    return state.typeFilter.has(n.object);
   }
 
   /** 在「类型+关系筛选后的子图」中，与中心有路径相连的节点（连通不区分方向） */
@@ -725,13 +760,19 @@
       const val = n.fields[f.key];
       if (val) lines.push(`${f.label}：${val}`);
     });
-    const customs = fs.custom[n.objectType] || {};
+    const customs = fs.custom[n.object] || {};
     Object.keys(customs).forEach((k) => {
       if (!customs[k]) return;
       const val = n.custom[k.replace(/ /g, "_")] || n.custom[k];
       if (val) lines.push(`${k}：${val}`);
     });
     return lines;
+  }
+
+  function measureNodeHeight(n) {
+    const el = nodeEls[n.id];
+    if (!el || el.classList.contains("hidden")) return 56;
+    return Math.max(el.offsetHeight || 56, 40);
   }
 
   function autoLayout(force = false) {
@@ -744,7 +785,7 @@
       byCol[col].push(n);
     });
     const cols = Object.keys(byCol).map(Number).sort((a, b) => a - b);
-    // 先按标签排，再按与左邻列连线做重心排序，减少交叉
+
     cols.forEach((col, idx) => {
       const list = byCol[col];
       if (idx > 0) {
@@ -756,7 +797,7 @@
               .filter((e) => (e.from === n.id || e.to === n.id))
               .map((e) => (e.from === n.id ? e.to : e.from))
               .filter((id) => prevIndex[id] !== undefined);
-            if (!linked.length) return list.indexOf(n);
+            if (!linked.length) return 0;
             return linked.reduce((s, id) => s + prevIndex[id], 0) / linked.length;
           };
           return score(a) - score(b) || a.label.localeCompare(b.label);
@@ -764,31 +805,65 @@
       } else {
         list.sort((a, b) => a.label.localeCompare(b.label));
       }
+
       const colX = START_X + (col + state.depthBack) * COL_GAP;
-      const totalH = Math.max(0, (list.length - 1) * ROW_GAP);
+      list.forEach((n) => {
+        const el = nodeEls[n.id];
+        if (el) el.style.left = colX + "px";
+      });
+
+      let yCursor = START_Y;
+      const heights = list.map((n) => measureNodeHeight(n));
+
       list.forEach((n, i) => {
         const saved = state.nodePositions[n.id];
-        if (!force && saved) { n.x = saved.x; n.y = saved.y; }
-        else {
+        if (!force && saved) {
+          n.x = saved.x;
+          n.y = saved.y;
+        } else {
           n.x = Math.round(colX);
-          n.y = Math.round(START_Y + 220 + i * ROW_GAP - totalH / 2);
+          n.y = Math.round(yCursor);
           state.nodePositions[n.id] = { x: n.x, y: n.y };
+          yCursor += heights[i] + NODE_GAP;
         }
       });
     });
+
+    // 各列相对中心列垂直居中
+    if (force && byCol[0] && byCol[0].length) {
+      const centerNodes = byCol[0];
+      const cMin = Math.min(...centerNodes.map((n) => n.y));
+      const cMax = Math.max(...centerNodes.map((n) => n.y + measureNodeHeight(n)));
+      const cMid = (cMin + cMax) / 2;
+      cols.forEach((col) => {
+        if (col === 0) return;
+        const list = byCol[col];
+        if (!list.length) return;
+        const minY = Math.min(...list.map((n) => n.y));
+        const maxY = Math.max(...list.map((n) => n.y + measureNodeHeight(n)));
+        const dy = cMid - (minY + maxY) / 2;
+        list.forEach((n) => {
+          n.y = Math.round(n.y + dy);
+          state.nodePositions[n.id] = { x: n.x, y: n.y };
+        });
+      });
+    }
   }
 
-  /** 清空手动位置，按层级重排并适应画布 */
+  /** 清空手动位置，按节点真实高度重排并适应画布 */
   function beautifyLayout() {
-    autoLayout(true);
-    nodes.forEach((n) => {
-      const el = nodeEls[n.id];
-      if (!el) return;
-      el.style.left = n.x + "px";
-      el.style.top = n.y + "px";
+    nodes.forEach((n) => updateNodeEl(n));
+    requestAnimationFrame(() => {
+      autoLayout(true);
+      nodes.forEach((n) => {
+        const el = nodeEls[n.id];
+        if (!el) return;
+        el.style.left = n.x + "px";
+        el.style.top = n.y + "px";
+      });
+      drawEdges();
+      requestAnimationFrame(() => fitView());
     });
-    drawEdges();
-    requestAnimationFrame(() => fitView());
   }
 
   function snapPan(v) {
@@ -908,7 +983,7 @@
     const parts = [];
     const arrowByTarget = new Map();
     edges.forEach((e) => {
-      if (state.relation !== "all" && e.type !== state.relation) return;
+      if (!edgeMatchesRelation(e)) return;
       const fromN = nodeById[e.from], toN = nodeById[e.to];
       if (!isNodeShown(fromN) || !isNodeShown(toN)) return;
       const fromEl = nodeEls[e.from], toEl = nodeEls[e.to];
@@ -1050,7 +1125,7 @@
       const val = n.fields[f.key] || "—";
       rows.push(`<div class="pop-row"><div class="pop-label">${f.label}</div><div class="pop-value">${val}</div></div>`);
     });
-    const customs = CUSTOM_FIELDS_BY_TYPE[n.objectType] || [];
+    const customs = CUSTOM_FIELDS_BY_OBJECT[n.object] || [];
     customs.forEach((k) => {
       const val = n.custom[k.replace(/ /g, "_")] || n.custom[k] || "—";
       rows.push(`<div class="pop-row"><div class="pop-label">${k}</div><div class="pop-value">${val}</div></div>`);
@@ -1167,7 +1242,8 @@
         relLabel.textContent = RELATION_LABELS[state.relation];
         relMenu.querySelectorAll(".filter-option").forEach((o) => o.classList.toggle("active", o.dataset.value === state.relation));
         relMenu.classList.remove("open");
-        drawEdges();
+        // 与对象筛选相同：按当前关系子图相对中心的连通性刷新节点显隐
+        refreshGraph();
       });
     });
   }
@@ -1175,7 +1251,7 @@
   function renderTypeFilterList(filter) {
     const list = document.getElementById("type-check-list");
     const q = (document.getElementById("type-search").value || "").trim().toLowerCase();
-    list.innerHTML = ALL_OBJECT_TYPES.filter((t) => !q || t.toLowerCase().includes(q)).map((t) => `
+    list.innerHTML = ALL_OBJECTS.filter((t) => !q || t.toLowerCase().includes(q)).map((t) => `
       <label class="type-check-item">
         <input type="checkbox" data-type="${t}" ${filter.has(t) ? "checked" : ""} />
         <span>${t}</span>
@@ -1190,7 +1266,7 @@
   }
 
   function updateTypeFilterDot() {
-    document.getElementById("type-filter-btn").classList.toggle("has-filter", state.typeFilter.size < ALL_OBJECT_TYPES.length);
+    document.getElementById("type-filter-btn").classList.toggle("has-filter", state.typeFilter.size < ALL_OBJECTS.length);
   }
 
   function setupTypeFilter() {
@@ -1236,13 +1312,13 @@
       });
     });
     const typeList = document.getElementById("custom-type-list");
-    const types = Object.keys(CUSTOM_FIELDS_BY_TYPE);
+    const types = Object.keys(CUSTOM_FIELDS_BY_OBJECT);
     let activeType = types[0];
     function renderCustomFields(type) {
       activeType = type;
       typeList.querySelectorAll(".custom-type-item").forEach((el) => el.classList.toggle("active", el.dataset.type === type));
       const wrap = document.getElementById("custom-field-checks");
-      const fields = CUSTOM_FIELDS_BY_TYPE[type] || [];
+      const fields = CUSTOM_FIELDS_BY_OBJECT[type] || [];
       wrap.innerHTML = fields.map((f) => `
         <label><input type="checkbox" data-custom="${f}" data-otype="${type}" ${draft.custom[type] && draft.custom[type][f] ? "checked" : ""} /> ${f}</label>
       `).join("") || `<span style="font-size:12px;color:#9a9aa0">无自定义字段</span>`;
