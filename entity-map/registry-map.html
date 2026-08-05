@@ -178,12 +178,14 @@
       width: 22px; height: 22px; border-radius: 50%;
       background: var(--blue-icon); color: #fff; border: none;
       display: none; align-items: center; justify-content: center;
-      cursor: pointer; z-index: 5; font-size: 11px; font-weight: 700;
-      box-shadow: 0 2px 6px rgba(75,120,240,.35); padding: 0;
+      cursor: pointer; z-index: 5; font-size: 14px; font-weight: 700;
+      line-height: 1; box-shadow: 0 2px 6px rgba(75,120,240,.35); padding: 0;
     }
     .expand-btn:hover { background: #3d66d8; }
-    /* 仅在节点 hover 且处于可穿透边界时显示 */
-    .node:hover .expand-btn.show { display: flex; }
+    /* 节点 hover 或按钮自身 hover 时显示（按钮略伸出节点外） */
+    .node:hover .expand-btn.show,
+    .expand-btn.show:hover,
+    .expand-btn.show:focus-visible { display: flex; }
     .expand-btn.fwd { right: -11px; }
     .expand-btn.back { left: -11px; }
     .zoom-bar {
@@ -617,6 +619,7 @@
 
   const nodes = [
     makeNode("deep-dna-001", "DNA-DEEP-001", "DNA", "Chain DNA", {}, { Sequence_Length: "1200bp", Vector: "pUC19" }),
+    makeNode("deep-dna-lc-001", "DNA-DEEP-LC", "DNA", "Chain DNA", {}, { Sequence_Length: "980bp", Vector: "pUC19" }),
     makeNode("dna-hc", "DNA-HC-001", "DNA", "Chain DNA", {}, { Sequence_Length: "720bp", Vector: "pUC57" }),
     makeNode("dna-lc", "DNA-LC-001", "DNA", "Chain DNA", {}, { Sequence_Length: "690bp", Vector: "pUC57" }),
     makeNode("plasmid-hc", "PL-HC-001", "Plasmid", "Plasmid", {}, { Backbone: "pcDNA3.1", Resistance: "Amp" }),
@@ -636,6 +639,7 @@
     makeNode("antigen-lot-001", "AG-LOT-001", "AA", "Antigen_lot", {}, { Lot_Number: "LOT-2026-01", Expiry: "2027-06" }),
     makeNode("sample-lot-001", "SMP-LOT-001", "AA", "Sample Lot", {}, { Volume: "500 µL", Storage: "-80°C" }),
     makeNode("sample-lot-002", "SMP-LOT-002", "AA", "Sample Lot", {}, { Volume: "200 µL", Storage: "-80°C" }),
+    makeNode("sample-lot-003", "SMP-LOT-003", "AA", "Sample Lot", {}, { Volume: "100 µL", Storage: "-80°C" }),
     makeNode("animal-001", "AN-MOUSE-001", "Other", "Animal", {}, { Species: "Mouse", Age: "8w" }),
     makeNode("project-001", "PRJ-PDL1", "Other", "项目代号", {}, { Phase: "I", Sponsor: "R&D" }),
     makeNode("noperm-001", "RESTRICTED", "Other", "Restricted", {}, { noPermission: true })
@@ -644,6 +648,7 @@
   const edges = [
     // 父子（实线）：每个实体最多 1 个父
     { from: "deep-dna-001", to: "dna-hc", type: "parent" },
+    { from: "deep-dna-lc-001", to: "dna-lc", type: "parent" },
     { from: "dna-hc", to: "plasmid-hc", type: "parent" },
     { from: "dna-lc", to: "plasmid-lc", type: "parent" },
     { from: "parent-cell-001", to: "cell-001", type: "parent" },
@@ -652,6 +657,7 @@
     { from: "antigen-001", to: "antigen-lot-001", type: "parent" },
     { from: "purified-001", to: "sample-lot-001", type: "parent" },
     { from: "sample-lot-001", to: "sample-lot-002", type: "parent" },
+    { from: "sample-lot-002", to: "sample-lot-003", type: "parent" },
     { from: "animal-001", to: "project-001", type: "parent" },
 
     // 关联（虚线）
@@ -808,22 +814,16 @@
       const L = layers[id];
       edges.forEach((e) => {
         if (!edgeMatchesRelation(e)) return;
-        if (e.from === id) {
-          const nid = e.to;
-          const n = nodeById[nid];
-          const nL = layers[nid];
-          if (isTypeVisible(n) && connected.has(nid) && nL > state.depthFwd && L === state.depthFwd) {
-            frontierFwd.add(id);
-          }
-        }
-        if (e.to === id) {
-          const nid = e.from;
-          const n = nodeById[nid];
-          const nL = layers[nid];
-          if (isTypeVisible(n) && connected.has(nid) && nL < -state.depthBack && L === -state.depthBack) {
-            frontierBack.add(id);
-          }
-        }
+        let nid = null;
+        if (e.from === id) nid = e.to;
+        else if (e.to === id) nid = e.from;
+        else return;
+        const n = nodeById[nid];
+        const nL = layers[nid];
+        if (!isTypeVisible(n) || !connected.has(nid)) return;
+        // 边界上仍有更深/更浅邻居时，显示穿透按钮（不依赖边方向）
+        if (L === state.depthFwd && nL > state.depthFwd) frontierFwd.add(id);
+        if (L === -state.depthBack && nL < -state.depthBack) frontierBack.add(id);
       });
     });
 
@@ -1108,6 +1108,81 @@
     return `<div class="node-fields">${lines.map((l) => `<div class="field-line">${l}</div>`).join("")}</div>`;
   }
 
+  /** 穿透展开一层：重排列坐标，并保持中心节点屏幕位置稳定 */
+  function expandLayer(dir) {
+    const center = nodeById[CENTER_ID];
+    const prevCenterX = center ? center.x : 0;
+    const prevScreenX = prevCenterX * view.scale + view.panX;
+
+    if (dir === "back") state.depthBack += 1;
+    else state.depthFwd += 1;
+
+    // 深度变化后列间距基准变化，必须清空手动坐标并强制重排，否则新节点会叠在旧列上
+    state.nodePositions = {};
+    computeVisibility();
+
+    nodes.forEach((n) => {
+      let el = nodeEls[n.id];
+      if (!el) {
+        el = document.createElement("div");
+        el.id = "node-" + n.id;
+        el.dataset.id = n.id;
+        stage.appendChild(el);
+        nodeEls[n.id] = el;
+      }
+      // 先更新显隐，便于测量高度
+      updateNodeEl(n);
+    });
+
+    requestAnimationFrame(() => {
+      autoLayout(true);
+      nodes.forEach((n) => {
+        const el = nodeEls[n.id];
+        if (!el) return;
+        el.style.left = n.x + "px";
+        el.style.top = n.y + "px";
+        updateExpandButtons(n, el);
+      });
+      drawEdges();
+
+      if (center) {
+        view.panX = prevScreenX - center.x * view.scale;
+        applyViewTransform();
+      }
+
+      // 若新展开节点仍在视口外，轻微平移把它带进视野
+      bringExpandedNodesIntoView(dir);
+    });
+  }
+
+  function bringExpandedNodesIntoView(dir) {
+    const pad = 48;
+    const mapW = map.clientWidth;
+    let target = null;
+    nodes.forEach((n) => {
+      if (!isNodeShown(n)) return;
+      const L = state.layers[n.id];
+      if (dir === "back" && L === -state.depthBack) {
+        if (!target || n.x < target.x) target = n;
+      }
+      if (dir === "fwd" && L === state.depthFwd) {
+        if (!target || n.x > target.x) target = n;
+      }
+    });
+    if (!target) return;
+    const el = nodeEls[target.id];
+    const w = (el && el.offsetWidth) || 168;
+    const screenLeft = target.x * view.scale + view.panX;
+    const screenRight = (target.x + w) * view.scale + view.panX;
+    if (dir === "back" && screenLeft < pad) {
+      view.panX += pad - screenLeft;
+      applyViewTransform();
+    } else if (dir === "fwd" && screenRight > mapW - pad) {
+      view.panX -= screenRight - (mapW - pad);
+      applyViewTransform();
+    }
+  }
+
   function updateNodeEl(n) {
     const el = nodeEls[n.id];
     if (!el) return;
@@ -1129,21 +1204,10 @@
       ${buildNodeFieldsHtml(n)}
       <button class="expand-btn back" type="button" data-dir="back" aria-label="展开上游">‹</button>
       <button class="expand-btn fwd" type="button" data-dir="fwd" aria-label="展开下游">›</button>`;
-    const chip = el.querySelector(".node-chip");
-    if (chip && !chip.dataset.bound) {
-      chip.dataset.bound = "1";
-      setupChipInteractions(chip, n);
+    if (!el.dataset.chipBound) {
+      el.dataset.chipBound = "1";
+      setupChipInteractions(el, n);
     }
-    el.querySelectorAll(".expand-btn").forEach((btn) => {
-      if (btn.dataset.bound) return;
-      btn.dataset.bound = "1";
-      btn.addEventListener("click", (ev) => {
-        ev.stopPropagation();
-        if (btn.dataset.dir === "back") state.depthBack += 1;
-        else state.depthFwd += 1;
-        refreshGraph();
-      });
-    });
     if (!el.dataset.dragBound) enableDrag(el, n);
     updateExpandButtons(n, el);
   }
@@ -1191,19 +1255,31 @@
     drawEdges();
   }
 
-  function setupChipInteractions(chip, n) {
-    chip.addEventListener("mouseenter", () => {
-      clearTimeout(state.popoverTimer);
-      clearTimeout(state.popoverShowTimer);
-      state.popoverShowTimer = setTimeout(() => {
-        showPopover(n, chip.closest(".node"));
-      }, POPOVER_SHOW_DELAY);
+  function setupChipInteractions(nodeEl, n) {
+    // 委托到节点容器：updateNodeEl 会重写 innerHTML，不能绑在 chip 自身上
+    let overChip = false;
+    nodeEl.addEventListener("pointermove", (ev) => {
+      const chip = nodeEl.querySelector(".node-chip");
+      const now = !!(chip && chip.contains(ev.target));
+      if (now === overChip) return;
+      overChip = now;
+      if (now) {
+        clearTimeout(state.popoverTimer);
+        clearTimeout(state.popoverShowTimer);
+        state.popoverShowTimer = setTimeout(() => showPopover(n, nodeEl), POPOVER_SHOW_DELAY);
+      } else {
+        clearTimeout(state.popoverShowTimer);
+        state.popoverTimer = setTimeout(hidePopover, POPOVER_HIDE_DELAY);
+      }
     });
-    chip.addEventListener("mouseleave", () => {
+    nodeEl.addEventListener("pointerleave", () => {
+      if (!overChip) return;
+      overChip = false;
       clearTimeout(state.popoverShowTimer);
       state.popoverTimer = setTimeout(hidePopover, POPOVER_HIDE_DELAY);
     });
-    chip.addEventListener("click", (ev) => {
+    nodeEl.addEventListener("click", (ev) => {
+      if (!ev.target.closest(".node-chip")) return;
       ev.stopPropagation();
       clearTimeout(state.popoverShowTimer);
       setSelectedNode(n.id);
@@ -1531,6 +1607,16 @@
   setupSettings();
   setupZoomControls();
   setupPan();
+
+  // 穿透按钮：舞台级委托，避免 innerHTML 重绘丢监听
+  stage.addEventListener("click", (ev) => {
+    const btn = ev.target.closest(".expand-btn");
+    if (!btn || !btn.classList.contains("show")) return;
+    ev.preventDefault();
+    ev.stopPropagation();
+    expandLayer(btn.dataset.dir === "back" ? "back" : "fwd");
+  });
+
   refreshGraph();
   // 进入页面默认按节点真实高度美化排布一次
   requestAnimationFrame(() => beautifyLayout());
