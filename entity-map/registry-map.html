@@ -1429,8 +1429,8 @@
   setupZoomControls();
   setupPan();
   refreshGraph();
-  requestAnimationFrame(() => { centerOnNode(CENTER_ID); fitView(); });
-  window.addEventListener("resize", () => { drawEdges(); if (state.activePopoverId) positionPopover(nodeEls[state.activePopoverId]); });
+  // 进入页面默认按节点真实高度美化排布一次
+  requestAnimationFrame(() => beautifyLayout());
 })();
   </script>
 </body>
