@@ -123,6 +123,21 @@
     .edges path.line.assoc { stroke: var(--edge-assoc); stroke-dasharray: 5 4; stroke-width: 1.5; }
     .edges path.arrow.parent { fill: var(--edge-parent); stroke: none; }
     .edges path.arrow.assoc { fill: var(--edge-assoc); stroke: none; }
+    .edges.has-selection path.line:not(.highlight),
+    .edges.has-selection path.arrow:not(.highlight) { opacity: 0.28; }
+    .edges path.line.highlight {
+      stroke: #5b7cf0; stroke-width: 2.2; opacity: 1;
+    }
+    .edges path.line.highlight.assoc {
+      stroke: #7b92f0; stroke-dasharray: 5 4; stroke-width: 2;
+    }
+    .edges path.arrow.highlight { fill: #5b7cf0; opacity: 1; }
+    .edges path.arrow.highlight.assoc { fill: #7b92f0; }
+    .node.selected {
+      border-color: var(--blue-selected); background: var(--blue-selected-bg);
+      box-shadow: 0 0 0 .5px rgba(72,111,251,.25);
+    }
+    .node.selected .node-chip { background: #dfe3ec; }
     .node {
       position: absolute; background: #fff; border: 1px solid var(--border-card);
       border-radius: 4px; padding: 8px 9px 9px;
@@ -349,7 +364,7 @@
           <svg class="fs-icon fs-enter" width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 5.5V2h3.5M13 5.5V2H9.5M2 9.5V13h3.5M13 9.5V13H9.5"/></svg>
           <svg class="fs-icon fs-exit" width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5.5 2v3.5H2M9.5 2v3.5H13M5.5 13v-3.5H2M9.5 13v-3.5H13"/></svg>
         </button>
-        <button class="zoom-btn" type="button" id="zoom-fit" aria-label="适应画布" title="适应画布">
+        <button class="zoom-btn" type="button" id="zoom-fit" aria-label="美化排列并适应画布" title="美化排列">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.35" stroke-linecap="round">
             <rect x="2" y="2" width="12" height="12" rx="1.5"/><path d="M5 8h6M8 5v6"/>
           </svg>
@@ -410,6 +425,7 @@
   const ZOOM_PRESETS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 2];
   const ARROW_SIZE = 9;
   const CLICK_MOVE_THRESHOLD = 4;
+  const POPOVER_SHOW_DELAY = 500;
   const POPOVER_HIDE_DELAY = 180;
 
   const ICONS = {
@@ -498,27 +514,30 @@
   ];
 
   const edges = [
+    // 父子（实线）：每个实体最多 1 个父
     { from: "deep-dna-001", to: "dna-hc", type: "parent" },
     { from: "dna-hc", to: "plasmid-hc", type: "parent" },
     { from: "dna-lc", to: "plasmid-lc", type: "parent" },
-    { from: "plasmid-hc", to: "cell-001", type: "parent" },
-    { from: "plasmid-lc", to: "cell-001", type: "parent" },
     { from: "parent-cell-001", to: "cell-001", type: "parent" },
     { from: "cell-001", to: "ac-001", type: "parent" },
-    { from: "cell-001", to: "animal-sra-001", type: "assoc" },
     { from: "ac-001", to: "purified-001", type: "parent" },
+    { from: "antigen-001", to: "antigen-lot-001", type: "parent" },
+    { from: "purified-001", to: "sample-lot-001", type: "parent" },
+    { from: "sample-lot-001", to: "sample-lot-002", type: "parent" },
+    { from: "animal-001", to: "project-001", type: "parent" },
+
+    // 关联（虚线）
+    { from: "plasmid-hc", to: "cell-001", type: "assoc" },
+    { from: "plasmid-lc", to: "cell-001", type: "assoc" },
+    { from: "cell-001", to: "animal-sra-001", type: "assoc" },
     { from: "ac-001", to: "antigen-001", type: "assoc" },
     { from: "ac-001", to: "chain-aa-hc", type: "assoc" },
     { from: "ac-001", to: "chain-aa-lc", type: "assoc" },
-    { from: "antigen-001", to: "antigen-lot-001", type: "parent" },
     { from: "chain-aa-hc", to: "chain-dna-hc", type: "assoc" },
     { from: "chain-aa-lc", to: "chain-dna-lc", type: "assoc" },
     { from: "animal-sra-001", to: "chain-dna-hc", type: "assoc" },
     { from: "animal-sra-001", to: "chain-dna-lc", type: "assoc" },
-    { from: "animal-sra-001", to: "animal-001", type: "parent" },
-    { from: "purified-001", to: "sample-lot-001", type: "parent" },
-    { from: "sample-lot-001", to: "sample-lot-002", type: "parent" },
-    { from: "animal-001", to: "project-001", type: "parent" },
+    { from: "animal-sra-001", to: "animal-001", type: "assoc" },
     { from: "animal-001", to: "antigen-lot-001", type: "assoc" },
     { from: "purified-001", to: "noperm-001", type: "assoc" }
   ];
@@ -538,7 +557,9 @@
     fieldSettings: null,
     settingsDraft: null,
     activePopoverId: null,
+    popoverShowTimer: null,
     popoverTimer: null,
+    selectedId: null,
     nodePositions: {}
   };
 
@@ -668,7 +689,8 @@
     return lines;
   }
 
-  function autoLayout() {
+  function autoLayout(force = false) {
+    if (force) state.nodePositions = {};
     const byCol = {};
     nodes.forEach((n) => {
       if (!state.visibleIds.has(n.id)) return;
@@ -676,19 +698,52 @@
       if (!byCol[col]) byCol[col] = [];
       byCol[col].push(n);
     });
-    Object.keys(byCol).forEach((col) => {
-      const list = byCol[col].sort((a, b) => a.label.localeCompare(b.label));
-      const colX = START_X + (Number(col) + state.depthBack) * COL_GAP;
-      const totalH = (list.length - 1) * ROW_GAP;
+    const cols = Object.keys(byCol).map(Number).sort((a, b) => a - b);
+    // 先按标签排，再按与左邻列连线做重心排序，减少交叉
+    cols.forEach((col, idx) => {
+      const list = byCol[col];
+      if (idx > 0) {
+        const prevCol = cols[idx - 1];
+        const prevIndex = Object.fromEntries(byCol[prevCol].map((n, i) => [n.id, i]));
+        list.sort((a, b) => {
+          const score = (n) => {
+            const linked = edges
+              .filter((e) => (e.from === n.id || e.to === n.id))
+              .map((e) => (e.from === n.id ? e.to : e.from))
+              .filter((id) => prevIndex[id] !== undefined);
+            if (!linked.length) return list.indexOf(n);
+            return linked.reduce((s, id) => s + prevIndex[id], 0) / linked.length;
+          };
+          return score(a) - score(b) || a.label.localeCompare(b.label);
+        });
+      } else {
+        list.sort((a, b) => a.label.localeCompare(b.label));
+      }
+      const colX = START_X + (col + state.depthBack) * COL_GAP;
+      const totalH = Math.max(0, (list.length - 1) * ROW_GAP);
       list.forEach((n, i) => {
         const saved = state.nodePositions[n.id];
-        if (saved) { n.x = saved.x; n.y = saved.y; }
+        if (!force && saved) { n.x = saved.x; n.y = saved.y; }
         else {
-          n.x = colX;
-          n.y = START_Y + i * ROW_GAP - totalH / 2 + 200;
+          n.x = Math.round(colX);
+          n.y = Math.round(START_Y + 220 + i * ROW_GAP - totalH / 2);
+          state.nodePositions[n.id] = { x: n.x, y: n.y };
         }
       });
     });
+  }
+
+  /** 清空手动位置，按层级重排并适应画布 */
+  function beautifyLayout() {
+    autoLayout(true);
+    nodes.forEach((n) => {
+      const el = nodeEls[n.id];
+      if (!el) return;
+      el.style.left = n.x + "px";
+      el.style.top = n.y + "px";
+    });
+    drawEdges();
+    requestAnimationFrame(() => fitView());
   }
 
   function snapPan(v) {
@@ -775,6 +830,24 @@
     return `M ${tipX} ${tipY} L ${baseX} ${tipY - h} L ${baseX} ${tipY + h} Z`;
   }
 
+  function isEdgeRelatedToSelection(edge, selectedId) {
+    if (!selectedId) return false;
+    return edge.from === selectedId || edge.to === selectedId;
+  }
+
+  function setSelectedNode(nodeId) {
+    state.selectedId = nodeId || null;
+    nodes.forEach((n) => {
+      const el = nodeEls[n.id];
+      if (el) el.classList.toggle("selected", !n.noPermission && n.id === state.selectedId);
+    });
+    drawEdges();
+  }
+
+  function clearSelectedNode() {
+    setSelectedNode(null);
+  }
+
   function drawEdges() {
     const b = getContentBounds() || { minX: 0, minY: 0, maxX: 1400, maxY: 900 };
     const pad = 200;
@@ -785,6 +858,8 @@
     svg.setAttribute("height", String(h));
     svg.style.width = w + "px";
     svg.style.height = h + "px";
+    const selectedId = state.selectedId;
+    svg.classList.toggle("has-selection", Boolean(selectedId));
     const parts = [];
     const arrowByTarget = new Map();
     edges.forEach((e) => {
@@ -797,14 +872,19 @@
       const tip = port(toEl, "left");
       const lineEnd = { x: tip.x - ARROW_SIZE, y: tip.y };
       const cls = e.type === "assoc" ? "assoc" : "parent";
-      parts.push(`<path class="line ${cls}" d="${curve(from, lineEnd)}" />`);
-      const rank = e.type === "parent" ? 1 : 0;
+      const related = isEdgeRelatedToSelection(e, selectedId);
+      const hi = related ? " highlight" : "";
+      parts.push(`<path class="line ${cls}${hi}" d="${curve(from, lineEnd)}" />`);
+      const rank = (isHi) => (isHi ? 2 : 0) + (e.type === "parent" ? 1 : 0);
       const prev = arrowByTarget.get(e.to);
-      if (!prev || rank > prev.rank) arrowByTarget.set(e.to, { tip, type: e.type, rank });
+      if (!prev || rank(related) > prev.rank) {
+        arrowByTarget.set(e.to, { tip, type: e.type, highlight: related, rank: rank(related) });
+      }
     });
-    arrowByTarget.forEach(({ tip, type }) => {
+    arrowByTarget.forEach(({ tip, type, highlight }) => {
       const cls = type === "assoc" ? "assoc" : "parent";
-      parts.push(`<path class="arrow ${cls}" d="${horizontalArrow(tip.x, tip.y, ARROW_SIZE)}" />`);
+      const hi = highlight ? " highlight" : "";
+      parts.push(`<path class="arrow ${cls}${hi}" d="${horizontalArrow(tip.x, tip.y, ARROW_SIZE)}" />`);
     });
     svg.innerHTML = parts.join("");
   }
@@ -898,13 +978,19 @@
   function setupChipInteractions(chip, n) {
     chip.addEventListener("mouseenter", () => {
       clearTimeout(state.popoverTimer);
-      showPopover(n, chip.closest(".node"));
+      clearTimeout(state.popoverShowTimer);
+      state.popoverShowTimer = setTimeout(() => {
+        showPopover(n, chip.closest(".node"));
+      }, POPOVER_SHOW_DELAY);
     });
     chip.addEventListener("mouseleave", () => {
+      clearTimeout(state.popoverShowTimer);
       state.popoverTimer = setTimeout(hidePopover, POPOVER_HIDE_DELAY);
     });
     chip.addEventListener("click", (ev) => {
       ev.stopPropagation();
+      clearTimeout(state.popoverShowTimer);
+      setSelectedNode(n.id);
       window.open(entityUrl(n.id), "_blank", "noopener");
     });
   }
@@ -951,18 +1037,21 @@
   }
 
   function hidePopover() {
+    clearTimeout(state.popoverShowTimer);
     state.activePopoverId = null;
     popover.classList.remove("open");
   }
 
-  popover.addEventListener("mouseenter", () => clearTimeout(state.popoverTimer));
+  popover.addEventListener("mouseenter", () => {
+    clearTimeout(state.popoverTimer);
+    clearTimeout(state.popoverShowTimer);
+  });
   popover.addEventListener("mouseleave", () => { state.popoverTimer = setTimeout(hidePopover, POPOVER_HIDE_DELAY); });
 
   function enableDrag(el, n) {
     if (el.dataset.dragBound) return;
     el.dataset.dragBound = "1";
     if (n.noPermission) {
-      el.onpointerdown = null;
       let dragging = false, sx, sy, ox, oy;
       el.addEventListener("pointerdown", (ev) => {
         if (ev.button !== 0) return;
@@ -971,6 +1060,7 @@
         el.setPointerCapture(ev.pointerId);
         sx = ev.clientX; sy = ev.clientY; ox = n.x; oy = n.y;
         ev.preventDefault();
+        ev.stopPropagation();
       });
       el.addEventListener("pointermove", (ev) => {
         if (!dragging) return;
@@ -985,13 +1075,17 @@
     }
     let dragging = false, moved = false, sx, sy, ox, oy;
     const onDown = (ev) => {
-      if (ev.button !== 0 || ev.target.closest(".node-chip, .expand-btn")) return;
+      if (ev.button !== 0 || ev.target.closest(".expand-btn")) return;
+      // 点击节点（含标签）即选中并高亮上下连线
+      if (!ev.target.closest(".node-chip")) setSelectedNode(n.id);
+      if (ev.target.closest(".node-chip")) return; // chip 自己处理 click
       dragging = true; moved = false;
       el.classList.add("dragging");
       el.setPointerCapture(ev.pointerId);
       sx = ev.clientX; sy = ev.clientY; ox = n.x; oy = n.y;
       hidePopover();
       ev.preventDefault();
+      ev.stopPropagation();
     };
     const onMove = (ev) => {
       if (!dragging) return;
@@ -1148,7 +1242,7 @@
       const prevs = ZOOM_PRESETS.filter((z) => z < view.scale - 0.001);
       setZoom(prevs.length ? prevs[prevs.length - 1] : Math.max(view.min, view.scale - view.step));
     });
-    document.getElementById("zoom-fit").addEventListener("click", fitView);
+    document.getElementById("zoom-fit").addEventListener("click", beautifyLayout);
     const fsBtn = document.getElementById("zoom-fullscreen");
     const isFs = () => (document.fullscreenElement || document.webkitFullscreenElement) === map;
     const updFs = () => fsBtn.classList.toggle("is-fullscreen", isFs());
@@ -1180,6 +1274,7 @@
       if (ev.button !== 0) return;
       if (ev.target.closest(".node, .filter-bar, .zoom-bar, .edge-legend, .filter-menu, .zoom-menu, .node-popover, .type-filter-popover, .modal-overlay")) return;
       hidePopover();
+      clearSelectedNode();
       panning = true;
       map.setPointerCapture(ev.pointerId);
       sx = ev.clientX; sy = ev.clientY; ox = view.panX; oy = view.panY;
