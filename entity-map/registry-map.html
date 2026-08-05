@@ -262,37 +262,117 @@
     }
     .pop-name .icon { width: 14px; height: 14px; color: var(--blue-icon); flex-shrink: 0; }
     .modal-overlay {
-      display: none; position: fixed; inset: 0; background: rgba(16,16,20,.35);
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,.45);
       z-index: 100; align-items: center; justify-content: center;
+      padding: 24px;
     }
     .modal-overlay.open { display: flex; }
     .settings-modal {
-      width: min(720px, calc(100vw - 48px)); max-height: calc(100vh - 48px);
-      background: #fff; border-radius: 10px; box-shadow: 0 12px 40px rgba(16,16,20,.2);
+      width: min(640px, calc(100vw - 48px)); max-height: calc(100vh - 48px);
+      background: #fff; border-radius: 8px;
+      box-shadow: 0 6px 16px 0 rgba(0,0,0,.08), 0 3px 6px -4px rgba(0,0,0,.12), 0 9px 28px 8px rgba(0,0,0,.05);
       display: flex; flex-direction: column; overflow: hidden;
+      color: rgba(0,0,0,.88);
     }
     .settings-header {
-      padding: 16px 20px; border-bottom: 1px solid #ececee;
-      font-size: 15px; font-weight: 600;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px 24px; border-bottom: 1px solid #f0f0f0;
+      font-size: 16px; font-weight: 600; line-height: 1.5; flex-shrink: 0;
     }
-    .settings-body { flex: 1; overflow-y: auto; padding: 16px 20px; display: flex; flex-direction: column; gap: 20px; }
-    .settings-section h5 { font-size: 13px; font-weight: 600; margin-bottom: 10px; color: #2a2a2e; }
-    .settings-checks { display: flex; flex-wrap: wrap; gap: 8px 16px; }
-    .settings-checks label { display: flex; align-items: center; gap: 6px; font-size: 12px; cursor: pointer; }
-    .custom-fields-wrap { display: flex; gap: 16px; min-height: 180px; }
+    .settings-close {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 32px; height: 32px; margin: -4px -8px -4px 0; padding: 0;
+      border: none; background: transparent; border-radius: 4px;
+      color: rgba(0,0,0,.45); cursor: pointer; flex-shrink: 0;
+    }
+    .settings-close:hover { color: rgba(0,0,0,.88); background: rgba(0,0,0,.04); }
+    .settings-close svg { width: 14px; height: 14px; }
+    .settings-body {
+      flex: 1; overflow-y: auto; padding: 20px 24px 8px;
+      display: flex; flex-direction: column; gap: 0;
+    }
+    .settings-section { padding-bottom: 20px; }
+    .settings-section + .settings-section {
+      padding-top: 20px; border-top: 1px solid #f0f0f0;
+    }
+    .settings-section h5 {
+      font-size: 14px; font-weight: 600; margin-bottom: 12px;
+      color: rgba(0,0,0,.88); line-height: 22px;
+    }
+    .settings-select-all {
+      display: flex; align-items: center; gap: 8px;
+      margin-bottom: 12px; font-size: 14px; line-height: 22px; cursor: pointer;
+      user-select: none; width: fit-content;
+    }
+    .settings-select-all input,
+    .settings-check-grid label input,
+    .custom-field-checks label input {
+      width: 16px; height: 16px; margin: 0; flex-shrink: 0;
+      accent-color: #1677ff; cursor: pointer;
+    }
+    .settings-check-grid {
+      display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
+      column-gap: 16px; row-gap: 12px;
+    }
+    .settings-check-grid label,
+    .custom-field-checks label {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 14px; line-height: 22px; color: rgba(0,0,0,.88);
+      cursor: pointer; user-select: none; min-width: 0;
+    }
+    .custom-fields-wrap {
+      display: flex; align-items: stretch; min-height: 220px;
+      border: 1px solid #f0f0f0; border-radius: 6px; overflow: hidden;
+    }
     .custom-type-list {
-      width: 160px; flex-shrink: 0; border: 1px solid #e6e6e8; border-radius: 6px;
-      overflow-y: auto; max-height: 220px;
+      width: 168px; flex-shrink: 0; overflow-y: auto; max-height: 260px;
+      border-right: 1px solid #f0f0f0; background: #fff;
     }
     .custom-type-item {
-      padding: 8px 12px; font-size: 12px; cursor: pointer; border-bottom: 1px solid #f0f0f2;
+      padding: 9px 16px; font-size: 14px; line-height: 22px;
+      cursor: pointer; color: rgba(0,0,0,.88); white-space: nowrap;
+      overflow: hidden; text-overflow: ellipsis;
     }
-    .custom-type-item:hover { background: #f7f7f9; }
-    .custom-type-item.active { background: #eef2ff; color: #3b5bdb; font-weight: 600; }
-    .custom-field-checks { flex: 1; display: flex; flex-wrap: wrap; gap: 8px 16px; align-content: flex-start; }
+    .custom-type-item:hover { background: rgba(0,0,0,.04); }
+    .custom-type-item.active {
+      background: #e6f4ff; color: #1677ff; font-weight: 500;
+    }
+    .custom-field-checks {
+      flex: 1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+      column-gap: 24px; row-gap: 12px; align-content: flex-start;
+      padding: 12px 20px; overflow-y: auto; max-height: 260px;
+    }
+    .custom-field-empty {
+      grid-column: 1 / -1; font-size: 14px; color: rgba(0,0,0,.45); padding: 4px 0;
+    }
     .settings-footer {
-      padding: 12px 20px; border-top: 1px solid #ececee;
-      display: flex; justify-content: flex-end; gap: 8px;
+      padding: 12px 24px 16px; border-top: 1px solid #f0f0f0;
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      flex-shrink: 0;
+    }
+    .settings-footer .btn {
+      height: 32px; padding: 0 16px; border-radius: 6px;
+      font-size: 14px; line-height: 1; border: 1px solid #d9d9d9;
+      background: #fff; color: rgba(0,0,0,.88);
+    }
+    .settings-footer .btn:hover {
+      border-color: #4096ff; color: #4096ff; background: #fff;
+    }
+    .settings-footer .btn-primary {
+      background: #1677ff; color: #fff; border-color: #1677ff;
+    }
+    .settings-footer .btn-primary:hover {
+      background: #4096ff; border-color: #4096ff; color: #fff;
+    }
+    .settings-footer-right { display: flex; align-items: center; gap: 8px; }
+    @media (max-width: 560px) {
+      .settings-check-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .custom-fields-wrap { flex-direction: column; }
+      .custom-type-list {
+        width: 100%; max-height: 120px; border-right: none;
+        border-bottom: 1px solid #f0f0f0;
+      }
+      .custom-field-checks { grid-template-columns: 1fr; }
     }
   </style>
 </head>
@@ -394,12 +474,23 @@
   </div>
 
   <div class="modal-overlay" id="settings-modal-overlay">
-    <div class="settings-modal" role="dialog" aria-label="节点字段显示设置">
-      <div class="settings-header">节点字段显示设置</div>
+    <div class="settings-modal" role="dialog" aria-modal="true" aria-labelledby="settings-modal-title">
+      <div class="settings-header">
+        <span id="settings-modal-title">节点字段显示设置</span>
+        <button class="settings-close" type="button" id="settings-close" aria-label="关闭">
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+            <path d="M2.5 2.5l9 9M11.5 2.5l-9 9"/>
+          </svg>
+        </button>
+      </div>
       <div class="settings-body">
         <div class="settings-section">
           <h5>基础字段</h5>
-          <div class="settings-checks" id="basic-field-checks"></div>
+          <label class="settings-select-all">
+            <input type="checkbox" id="basic-select-all" />
+            <span>全选</span>
+          </label>
+          <div class="settings-check-grid" id="basic-field-checks"></div>
         </div>
         <div class="settings-section">
           <h5>对象自定义字段</h5>
@@ -411,8 +502,10 @@
       </div>
       <div class="settings-footer">
         <button class="btn" type="button" id="settings-reset">重置默认</button>
-        <button class="btn" type="button" id="settings-cancel">取消</button>
-        <button class="btn btn-primary" type="button" id="settings-confirm">确定</button>
+        <div class="settings-footer-right">
+          <button class="btn btn-primary" type="button" id="settings-confirm">确定</button>
+          <button class="btn" type="button" id="settings-cancel">取消</button>
+        </div>
       </div>
     </div>
   </div>
@@ -468,11 +561,11 @@
 
   const BASIC_FIELDS = [
     { key: "name", label: "名称", defaultOn: true },
-    { key: "object", label: "对象", defaultOn: true },
-    { key: "objectType", label: "对象类型", defaultOn: false },
     { key: "project", label: "项目" },
     { key: "department", label: "所属部门" },
     { key: "status", label: "状态" },
+    { key: "object", label: "对象", defaultOn: true },
+    { key: "objectType", label: "对象类型", defaultOn: false },
     { key: "sharing", label: "数据分享" },
     { key: "creator", label: "创建人" },
     { key: "createdAt", label: "创建时间" }
@@ -1294,21 +1387,22 @@
 
   function renderSettingsModal(draft) {
     const basicWrap = document.getElementById("basic-field-checks");
-    basicWrap.innerHTML = `
-      <label><input type="checkbox" id="basic-select-all" /> 全选</label>
-      ${BASIC_FIELDS.map((f) => `
-        <label><input type="checkbox" data-basic="${f.key}" ${draft.basic[f.key] ? "checked" : ""} /> ${f.label}</label>
-      `).join("")}`;
-    const allChecked = BASIC_FIELDS.every((f) => draft.basic[f.key]);
-    basicWrap.querySelector("#basic-select-all").checked = allChecked;
-    basicWrap.querySelector("#basic-select-all").addEventListener("change", (ev) => {
+    const selectAll = document.getElementById("basic-select-all");
+    basicWrap.innerHTML = BASIC_FIELDS.map((f) => `
+      <label>
+        <input type="checkbox" data-basic="${f.key}" ${draft.basic[f.key] ? "checked" : ""} />
+        <span>${f.label}</span>
+      </label>
+    `).join("");
+    selectAll.checked = BASIC_FIELDS.every((f) => draft.basic[f.key]);
+    selectAll.onchange = (ev) => {
       BASIC_FIELDS.forEach((f) => { draft.basic[f.key] = ev.target.checked; });
       basicWrap.querySelectorAll("[data-basic]").forEach((inp) => { inp.checked = ev.target.checked; });
-    });
+    };
     basicWrap.querySelectorAll("[data-basic]").forEach((inp) => {
       inp.addEventListener("change", () => {
         draft.basic[inp.dataset.basic] = inp.checked;
-        basicWrap.querySelector("#basic-select-all").checked = BASIC_FIELDS.every((f) => draft.basic[f.key]);
+        selectAll.checked = BASIC_FIELDS.every((f) => draft.basic[f.key]);
       });
     });
     const typeList = document.getElementById("custom-type-list");
@@ -1319,9 +1413,14 @@
       typeList.querySelectorAll(".custom-type-item").forEach((el) => el.classList.toggle("active", el.dataset.type === type));
       const wrap = document.getElementById("custom-field-checks");
       const fields = CUSTOM_FIELDS_BY_OBJECT[type] || [];
-      wrap.innerHTML = fields.map((f) => `
-        <label><input type="checkbox" data-custom="${f}" data-otype="${type}" ${draft.custom[type] && draft.custom[type][f] ? "checked" : ""} /> ${f}</label>
-      `).join("") || `<span style="font-size:12px;color:#9a9aa0">无自定义字段</span>`;
+      wrap.innerHTML = fields.length
+        ? fields.map((f) => `
+            <label>
+              <input type="checkbox" data-custom="${f}" data-otype="${type}" ${draft.custom[type] && draft.custom[type][f] ? "checked" : ""} />
+              <span>${f}</span>
+            </label>
+          `).join("")
+        : `<span class="custom-field-empty">无自定义字段</span>`;
       wrap.querySelectorAll("[data-custom]").forEach((inp) => {
         inp.addEventListener("change", () => {
           if (!draft.custom[inp.dataset.otype]) draft.custom[inp.dataset.otype] = {};
@@ -1329,7 +1428,9 @@
         });
       });
     }
-    typeList.innerHTML = types.map((t) => `<div class="custom-type-item${t === activeType ? " active" : ""}" data-type="${t}">${t}</div>`).join("");
+    typeList.innerHTML = types.map((t) =>
+      `<div class="custom-type-item${t === activeType ? " active" : ""}" data-type="${t}" title="${t}">${t}</div>`
+    ).join("");
     typeList.querySelectorAll(".custom-type-item").forEach((el) => {
       el.addEventListener("click", () => renderCustomFields(el.dataset.type));
     });
@@ -1338,13 +1439,15 @@
 
   function setupSettings() {
     const overlay = document.getElementById("settings-modal-overlay");
+    const closeModal = () => overlay.classList.remove("open");
     document.getElementById("settings-btn").addEventListener("click", () => {
       state.settingsDraft = JSON.parse(JSON.stringify(state.fieldSettings));
       renderSettingsModal(state.settingsDraft);
       overlay.classList.add("open");
     });
-    document.getElementById("settings-cancel").addEventListener("click", () => overlay.classList.remove("open"));
-    overlay.addEventListener("click", (ev) => { if (ev.target === overlay) overlay.classList.remove("open"); });
+    document.getElementById("settings-close").addEventListener("click", closeModal);
+    document.getElementById("settings-cancel").addEventListener("click", closeModal);
+    overlay.addEventListener("click", (ev) => { if (ev.target === overlay) closeModal(); });
     overlay.querySelector(".settings-modal").addEventListener("click", (ev) => ev.stopPropagation());
     document.getElementById("settings-reset").addEventListener("click", () => {
       state.settingsDraft = defaultFieldSettings();
@@ -1352,7 +1455,7 @@
     });
     document.getElementById("settings-confirm").addEventListener("click", () => {
       saveFieldSettings(state.settingsDraft);
-      overlay.classList.remove("open");
+      closeModal();
       nodes.forEach((n) => updateNodeEl(n));
     });
   }
@@ -1431,6 +1534,7 @@
   refreshGraph();
   // 进入页面默认按节点真实高度美化排布一次
   requestAnimationFrame(() => beautifyLayout());
+  window.addEventListener("resize", () => { drawEdges(); if (state.activePopoverId) positionPopover(nodeEls[state.activePopoverId]); });
 })();
   </script>
 </body>
